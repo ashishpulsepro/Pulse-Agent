@@ -1,6 +1,6 @@
 """
-PulsePro AI Site Management Backend System
-A comprehensive backend for managing sites with CRUD operations and user assignments
+site_manager.py
+Core site management functionality with clean, reusable classes
 """
 
 import requests
@@ -131,15 +131,7 @@ class SiteManager:
         }
     
     def create_site(self, site_data: SiteData) -> Dict[str, Any]:
-        """
-        Create a new site
-        
-        Args:
-            site_data: SiteData object with site information
-            
-        Returns:
-            Dict containing the API response
-        """
+        """Create a new site"""
         url = f"{self.base_url}/customer/add_location/"
         headers = self._get_headers()
         
@@ -161,16 +153,7 @@ class SiteManager:
             raise PulseProAPIException(f"Site creation failed: {e}")
     
     def update_site(self, location_id: int, site_data: SiteData) -> Dict[str, Any]:
-        """
-        Update an existing site
-        
-        Args:
-            location_id: ID of the location to update
-            site_data: SiteData object with updated information
-            
-        Returns:
-            Dict containing the API response
-        """
+        """Update an existing site"""
         url = f"{self.base_url}/customer/edit_location/save/?location_id={location_id}"
         headers = self._get_headers()
         
@@ -186,12 +169,7 @@ class SiteManager:
             raise PulseProAPIException(f"Site update failed: {e}")
     
     def get_all_sites(self) -> Dict[str, Any]:
-        """
-        Get all sites
-        
-        Returns:
-            Dict containing all sites and metadata
-        """
+        """Get all sites"""
         url = f"{self.base_url}/customer/locations/"
         headers = self._get_headers()
         
@@ -208,15 +186,7 @@ class SiteManager:
             raise PulseProAPIException(f"Failed to retrieve sites: {e}")
     
     def get_site_by_id(self, location_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Get a specific site by ID
-        
-        Args:
-            location_id: ID of the location
-            
-        Returns:
-            Dict containing site information or None if not found
-        """
+        """Get a specific site by ID"""
         sites_data = self.get_all_sites()
         sites = sites_data.get('locations', [])
         
@@ -227,15 +197,7 @@ class SiteManager:
         return None
     
     def delete_site(self, location_id: int) -> Dict[str, Any]:
-        """
-        Delete a site
-        
-        Args:
-            location_id: ID of the location to delete
-            
-        Returns:
-            Dict containing the API response
-        """
+        """Delete a site"""
         url = f"{self.base_url}/customer/locations/{location_id}/"
         headers = self._get_headers()
         
@@ -251,16 +213,7 @@ class SiteManager:
             raise PulseProAPIException(f"Site deletion failed: {e}")
     
     def assign_users_to_site(self, location_id: int, user_ids: List[int]) -> Dict[str, Any]:
-        """
-        Assign multiple users to a site
-        
-        Args:
-            location_id: ID of the location
-            user_ids: List of user IDs to assign
-            
-        Returns:
-            Dict containing the API response
-        """
+        """Assign multiple users to a site"""
         url = f"{self.base_url}/customer/add_location_to_multiple_user/"
         headers = self._get_headers()
         
@@ -281,15 +234,7 @@ class SiteManager:
             raise PulseProAPIException(f"User assignment failed: {e}")
     
     def unassign_users_from_site(self, mapped_location_ids: List[int]) -> Dict[str, Any]:
-        """
-        Unassign users from a site
-        
-        Args:
-            mapped_location_ids: List of mapped location IDs to remove
-            
-        Returns:
-            Dict containing the API response
-        """
+        """Unassign users from a site"""
         url = f"{self.base_url}/customer/delete_user_to_location_mapping/"
         headers = self._get_headers()
         
@@ -309,16 +254,7 @@ class SiteManager:
             raise PulseProAPIException(f"User unassignment failed: {e}")
     
     def get_site_users(self, location_id: int, search_keyword: str = "") -> Dict[str, Any]:
-        """
-        Get all users available for assignment to a site
-        
-        Args:
-            location_id: ID of the location
-            search_keyword: Optional search keyword to filter users
-            
-        Returns:
-            Dict containing users with their assignment status
-        """
+        """Get all users available for assignment to a site"""
         url = f"{self.base_url}/customer/get_all_users_added_and_not_added_to_location/{location_id}/"
         headers = self._get_headers()
         
@@ -337,193 +273,3 @@ class SiteManager:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get users for site {location_id}: {e}")
             raise PulseProAPIException(f"Failed to retrieve users: {e}")
-
-class AIAgentProcessor:
-    """AI Agent that processes natural language requests for site management"""
-    
-    def __init__(self, site_manager: SiteManager):
-        self.site_manager = site_manager
-        self.command_mappings = {
-            # Site CRUD operations
-            'create': ['create', 'add', 'new', 'make'],
-            'update': ['update', 'edit', 'modify', 'change'],
-            'delete': ['delete', 'remove', 'destroy'],
-            'show': ['show', 'list', 'get', 'display', 'view'],
-            
-            # User assignment operations
-            'assign': ['assign', 'add user', 'attach'],
-            'unassign': ['unassign', 'remove user', 'detach']
-        }
-    
-    def process_request(self, request: str) -> Dict[str, Any]:
-        """
-        Process natural language request and execute corresponding action
-        
-        Args:
-            request: Natural language request
-            
-        Returns:
-            Dict containing the result and response message
-        """
-        request_lower = request.lower()
-        
-        try:
-            if any(word in request_lower for word in self.command_mappings['create']):
-                return self._handle_create_request(request)
-            
-            elif any(word in request_lower for word in self.command_mappings['update']):
-                return self._handle_update_request(request)
-            
-            elif any(word in request_lower for word in self.command_mappings['delete']):
-                return self._handle_delete_request(request)
-            
-            elif any(word in request_lower for word in self.command_mappings['show']):
-                return self._handle_show_request(request)
-            
-            elif any(word in request_lower for word in self.command_mappings['assign']):
-                return self._handle_assign_request(request)
-            
-            elif any(word in request_lower for word in self.command_mappings['unassign']):
-                return self._handle_unassign_request(request)
-            
-            else:
-                return {
-                    'success': False,
-                    'message': 'I can help you with: creating, updating, deleting, showing sites, and assigning/unassigning users to sites.',
-                    'available_commands': list(self.command_mappings.keys())
-                }
-                
-        except Exception as e:
-            logger.error(f"Error processing request: {e}")
-            return {
-                'success': False,
-                'message': f'An error occurred: {str(e)}'
-            }
-    
-    def _handle_create_request(self, request: str) -> Dict[str, Any]:
-        """Handle site creation request"""
-        # This would ideally use NLP to extract site information
-        # For now, return a template for required information
-        return {
-            'success': False,
-            'message': 'To create a site, I need the following information:',
-            'required_fields': [
-                'location_name (required)',
-                'address_field1 (required)', 
-                'country_id (required)',
-                'state_id (required)',
-                'city_id (required)',
-                'reporting_timezone (required)'
-            ],
-            'example': {
-                'location_name': 'Mumbai Office',
-                'address_field1': 'Bandra West',
-                'country_id': 1,
-                'state_id': 61,
-                'city_id': 19788,
-                'reporting_timezone': 'Asia/Kolkata'
-            }
-        }
-    
-    def _handle_update_request(self, request: str) -> Dict[str, Any]:
-        """Handle site update request"""
-        return {
-            'success': False,
-            'message': 'To update a site, please provide the location_id and the fields to update.'
-        }
-    
-    def _handle_delete_request(self, request: str) -> Dict[str, Any]:
-        """Handle site deletion request"""
-        return {
-            'success': False,
-            'message': 'To delete a site, please provide the location_id.'
-        }
-    
-    def _handle_show_request(self, request: str) -> Dict[str, Any]:
-        """Handle show sites request"""
-        try:
-            sites_data = self.site_manager.get_all_sites()
-            sites = sites_data.get('locations', [])
-            
-            # Format response for better readability
-            formatted_sites = []
-            for site in sites:
-                formatted_sites.append({
-                    'id': site.get('id'),
-                    'name': site.get('location_name'),
-                    'address': site.get('full_address'),
-                    'city': site.get('city'),
-                    'state': site.get('state'),
-                    'country': site.get('country')
-                })
-            
-            return {
-                'success': True,
-                'message': f'Found {len(formatted_sites)} sites',
-                'data': {
-                    'sites': formatted_sites,
-                    'total_count': sites_data.get('total_count', len(formatted_sites))
-                }
-            }
-            
-        except Exception as e:
-            return {
-                'success': False,
-                'message': f'Failed to retrieve sites: {str(e)}'
-            }
-    
-    def _handle_assign_request(self, request: str) -> Dict[str, Any]:
-        """Handle user assignment request"""
-        return {
-            'success': False,
-            'message': 'To assign users to a site, please provide location_id and user_ids list.'
-        }
-    
-    def _handle_unassign_request(self, request: str) -> Dict[str, Any]:
-        """Handle user unassignment request"""
-        return {
-            'success': False,
-            'message': 'To unassign users from a site, please provide mapped_location_id_list.'
-        }
-
-# Usage Example and Helper Functions
-def initialize_system(refresh_token: str) -> AIAgentProcessor:
-    """Initialize the complete system"""
-    
-    # Initialize authentication
-    auth_manager = AuthenticationManager()
-    auth_manager.set_refresh_token(refresh_token)
-    
-    # Initialize site manager
-    site_manager = SiteManager(auth_manager)
-    
-    # Initialize AI agent processor
-    ai_agent = AIAgentProcessor(site_manager)
-    
-    return ai_agent
-
-def demo_usage():
-    """Demonstration of how to use the system"""
-    
-    # Replace with actual refresh token
-    REFRESH_TOKEN = "your_refresh_token_here"
-    
-    # Initialize system
-    ai_agent = initialize_system(REFRESH_TOKEN)
-    
-    # Example requests
-    requests_examples = [
-        "show all sites",
-        "create a new site",
-        "delete site with id 123",
-        "assign users to site",
-        "list all locations"
-    ]
-    
-    for request in requests_examples:
-        print(f"\nProcessing: '{request}'")
-        response = ai_agent.process_request(request)
-        print(f"Response: {json.dumps(response, indent=2)}")
-
-if __name__ == "__main__":
-    demo_usage()
