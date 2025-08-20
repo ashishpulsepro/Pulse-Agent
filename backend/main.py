@@ -983,58 +983,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_ollama_site_manager():
-    """Dependency to get the Ollama-integrated site manager"""
+# Global variable to store the manager
+ollama_site_manager = None
+
+def initialize_ollama_site_manager():
+    """Initialize the Ollama site manager"""
     global ollama_site_manager
     
-    if not ollama_site_manager:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="System not initialized. Please authenticate first."
-        )
-    return ollama_site_manager
-
-# Enhanced Authentication with Ollama Integration
-@app.post("/auth/initialize", response_model=StandardResponse)
-async def initialize_system_with_ollama(auth_request: AuthRequest, config: OllamaConfig = Body(default=OllamaConfig())):
-    """Initialize the system with refresh token and Ollama model"""
-    global ollama_site_manager, ollama_config
-    
     try:
-        # Update Ollama configuration
-        ollama_config = config
+        # Initialize your site manager here
+        # Replace this with your actual SiteManager initialization
+        from site_manager import SiteManager  # Replace with actual import
         
-        # Initialize authentication
-        auth_manager = AuthenticationManager()
-        auth_manager.set_refresh_token(auth_request.refresh_token)
-        
-        # Test authentication
-        auth_manager.refresh_access_token()
-        
-        # Initialize Ollama-integrated site manager
-        ollama_site_manager = OllamaIntegratedSiteManager(
-            auth_manager=auth_manager, 
-            model_name=ollama_config.model_name
+        ollama_site_manager = SiteManager(
+            model="llama3.1:8b",
+            host="http://localhost:11434"
         )
         
-        # Test Ollama connection
-        ollama_status = "connected" if ollama_site_manager.conversational_agent.ollama_client else "fallback_mode"
-        
-        return StandardResponse(
-            success=True,
-            message="System initialized successfully with Ollama AI integration",
-            data={
-                "ollama_model": ollama_config.model_name,
-                "ollama_status": ollama_status,
-                "features": ["conversational_ai", "natural_language_processing", "multi_turn_conversations"]
-            }
+        # Test the connection
+        test_response = ollama_site_manager.chat(
+            message="Hello",
+            session_id="test_session",
+            user_id="system"
         )
-    
+        
+        print("Ollama Site Manager initialized successfully")
+        return True
+        
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Initialization failed: {str(e)}"
-        )
+        print(f"Failed to initialize Ollama Site Manager: {e}")
+        ollama_site_manager = None
+        return False
+
+
+
 
 # Test Ollama connection endpoint
 @app.get("/ollama/test", response_model=StandardResponse)
@@ -1169,69 +1151,216 @@ async def test_ollama_connection():
 
 
 
+import ollama
+import uuid
+from datetime import datetime
+from typing import Dict, List, Optional
+
+# Global storage for chat sessions (in production, use Redis or database)
+chat_sessions: Dict[str, List[Dict]] = {}
+
+def get_ollama_client():
+    """Get Ollama client - simple dependency"""
+    try:
+        client = ollama.Client(host='http://localhost:11434')
+        # Quick test to ensure connection
+        client.list()
+        return client
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Ollama service unavailable: {str(e)}"
+        )
+
 @app.post("/chat", response_model=ChatResponse)
-async def chat_with_ollama_ai(chat_request: ChatRequest, manager=Depends(get_ollama_site_manager)):
-    """Main conversational interface with Ollama AI"""
+async def chat_with_ollama_ai(chat_request: ChatRequest):
+    """Chat directly with Ollama AI"""
     
     # Generate session ID if not provided
     session_id = chat_request.session_id or str(uuid.uuid4())
+    user_id = chat_request.user_id or "anonymous"
     
     try:
-        response = manager.chat(
-            message=chat_request.message,
-            session_id=session_id,
-            user_id=chat_request.user_id
+        # Get Ollama client
+        client = get_ollama_client()
+        
+        # Validate message
+        if not chat_request.message or not chat_request.message.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Message cannot be empty"
+            )
+        
+        user_message = chat_request.message.strip()
+        
+        # Get or create session history
+        if session_id not in chat_sessions:
+            chat_sessions[session_id] = []
+        
+        session_history = chat_sessions[session_id]
+        
+        # Build conversation context for better responses
+        conversation_context = ""
+        if session_history:
+            # Include last 5 exchanges for context
+            recent_history = session_history[-10:]  # Last 10 messages (5 exchanges)
+            for msg in recent_history:
+                role = "Human" if msg["role"] == "user" else "Assistant"
+                conversation_context += f"{role}: {msg['content']}\n"
+        
+        # Create the prompt with context
+        if conversation_context:
+            full_prompt = f"""Previous conversation:
+{conversation_context}
+Human: {user_message}
+Assistant:"""
+        else:
+            full_prompt = f"Human: {user_message}\nAssistant:"
+        
+        # Generate response from Ollama
+        response = client.generate(
+            model="llama3.1:8b",
+            prompt=full_prompt,
+            options={
+                "num_predict": 500,  # Allow longer responses
+                "temperature": 0.7,  # Slightly creative
+                "top_p": 0.9,       # Good balance
+                "stop": ["Human:", "human:", "User:", "user:"]  # Stop at next human input
+            }
         )
         
+        ai_response = response['response'].strip()
+        
+        # Store the conversation
+        timestamp = datetime.now().isoformat()
+        
+        # Add user message to history
+        session_history.append({
+            "role": "user",
+            "content": user_message,
+            "timestamp": timestamp,
+            "user_id": user_id
+        })
+        
+        # Add AI response to history
+        session_history.append({
+            "role": "assistant", 
+            "content": ai_response,
+            "timestamp": timestamp,
+            "model": "llama3.1:8b"
+        })
+        
+        # Keep only last 50 messages per session to prevent memory issues
+        if len(session_history) > 50:
+            session_history = session_history[-50:]
+            chat_sessions[session_id] = session_history
+        
         return ChatResponse(
-            message=response.get("message", ""),
-            status=response.get("status", "unknown"),
+            message=ai_response,
+            status="completed",
             session_id=session_id,
-            context=response.get("context"),
-            data=response.get("data")
+            context={
+                "message_count": len(session_history),
+                "model": "llama3.1:8b",
+                "timestamp": timestamp
+            },
+            data={
+                "user_id": user_id,
+                "response_length": len(ai_response)
+            }
         )
-    
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+        
     except Exception as e:
+        print(f"Chat error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chat processing failed: {str(e)}"
         )
 
-@app.get("/chat/history/{session_id}")
-async def get_conversation_history(session_id: str, manager=Depends(get_ollama_site_manager)):
-    """Get conversation history for a session"""
+@app.get("/chat/sessions/{session_id}/history", response_model=StandardResponse)
+async def get_chat_history(session_id: str):
+    """Get chat history for a session"""
+    if session_id not in chat_sessions:
+        return StandardResponse(
+            success=False,
+            message="Session not found",
+            data={"session_id": session_id}
+        )
     
-    try:
-        history = manager.get_conversation_history(session_id)
-        
-        return {
+    return StandardResponse(
+        success=True,
+        message="Chat history retrieved",
+        data={
             "session_id": session_id,
-            "history": history
+            "history": chat_sessions[session_id],
+            "message_count": len(chat_sessions[session_id])
         }
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve conversation history: {str(e)}"
+    )
+
+@app.delete("/chat/sessions/{session_id}", response_model=StandardResponse)
+async def clear_chat_session(session_id: str):
+    """Clear a chat session"""
+    if session_id in chat_sessions:
+        del chat_sessions[session_id]
+        return StandardResponse(
+            success=True,
+            message="Session cleared",
+            data={"session_id": session_id}
+        )
+    else:
+        return StandardResponse(
+            success=False,
+            message="Session not found",
+            data={"session_id": session_id}
         )
 
-@app.delete("/chat/history/{session_id}", response_model=StandardResponse)
-async def clear_conversation_history(session_id: str, manager=Depends(get_ollama_site_manager)):
-    """Clear conversation history for a session"""
-    
+@app.get("/chat/health", response_model=StandardResponse)
+async def chat_health_check():
+    """Check if chat system is ready"""
     try:
-        manager.clear_conversation(session_id)
+        client = get_ollama_client()
+        
+        # Quick test
+        response = client.generate(
+            model="llama3.1:8b",
+            prompt="Say 'OK'",
+            options={"num_predict": 5}
+        )
         
         return StandardResponse(
             success=True,
-            message=f"Conversation history cleared for session {session_id}"
+            message="Chat system is healthy",
+            data={
+                "status": "ready",
+                "model": "llama3.1:8b",
+                "test_response": response['response'].strip()
+            }
         )
-    
+        
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear conversation history: {str(e)}"
+        return StandardResponse(
+            success=False,
+            message="Chat system is unhealthy",
+            data={
+                "status": "error",
+                "error": str(e)
+            }
         )
+
+
+
+
+
+
+    
+
+
+
+
 
 # Enhanced health check
 @app.get("/health")
