@@ -1172,9 +1172,143 @@ def get_ollama_client():
             detail=f"Ollama service unavailable: {str(e)}"
         )
 
+# @app.post("/chat", response_model=ChatResponse)
+# async def chat_with_ollama_ai(chat_request: ChatRequest):
+#     """Chat directly with Ollama AI"""
+    
+#     # Generate session ID if not provided
+#     session_id = chat_request.session_id or str(uuid.uuid4())
+#     user_id = chat_request.user_id or "anonymous"
+    
+#     try:
+#         # Get Ollama client
+#         client = get_ollama_client()
+        
+#         # Validate message
+#         if not chat_request.message or not chat_request.message.strip():
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="Message cannot be empty"
+#             )
+        
+#         user_message = chat_request.message.strip()
+        
+#         # Get or create session history
+#         if session_id not in chat_sessions:
+#             chat_sessions[session_id] = []
+        
+#         session_history = chat_sessions[session_id]
+        
+#         # Build conversation context for better responses
+#         conversation_context = ""
+#         if session_history:
+#             # Include last 5 exchanges for context
+#             recent_history = session_history[-10:]  # Last 10 messages (5 exchanges)
+#             for msg in recent_history:
+#                 role = "Human" if msg["role"] == "user" else "Assistant"
+#                 conversation_context += f"{role}: {msg['content']}\n"
+        
+#         # Create the prompt with context
+#         if conversation_context:
+#             full_prompt = f"""Previous conversation:
+# {conversation_context}
+# Human: {user_message}
+# Assistant:"""
+#         else:
+#             full_prompt = f"Human: {user_message}\nAssistant:"
+        
+#         # Generate response from Ollama
+#         response = client.generate(
+#             model="llama3.1:8b",
+#             prompt=full_prompt,
+#             options={
+#                 "num_predict": 500,  # Allow longer responses
+#                 "temperature": 0.7,  # Slightly creative
+#                 "top_p": 0.9,       # Good balance
+#                 "stop": ["Human:", "human:", "User:", "user:"]  # Stop at next human input
+#             }
+#         )
+        
+#         ai_response = response['response'].strip()
+        
+#         # Store the conversation
+#         timestamp = datetime.now().isoformat()
+        
+#         # Add user message to history
+#         session_history.append({
+#             "role": "user",
+#             "content": user_message,
+#             "timestamp": timestamp,
+#             "user_id": user_id
+#         })
+        
+#         # Add AI response to history
+#         session_history.append({
+#             "role": "assistant", 
+#             "content": ai_response,
+#             "timestamp": timestamp,
+#             "model": "llama3.1:8b"
+#         })
+        
+#         # Keep only last 50 messages per session to prevent memory issues
+#         if len(session_history) > 50:
+#             session_history = session_history[-50:]
+#             chat_sessions[session_id] = session_history
+        
+#         return ChatResponse(
+#             message=ai_response,
+#             status="completed",
+#             session_id=session_id,
+#             context={
+#                 "message_count": len(session_history),
+#                 "model": "llama3.1:8b",
+#                 "timestamp": timestamp
+#             },
+#             data={
+#                 "user_id": user_id,
+#                 "response_length": len(ai_response)
+#             }
+#         )
+        
+#     except HTTPException:
+#         # Re-raise HTTP exceptions
+#         raise
+        
+#     except Exception as e:
+#         print(f"Chat error: {e}")
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail=f"Chat processing failed: {str(e)}"
+#         )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import logging
+import json
+
+
+logging.basicConfig(
+    level=logging.INFO,  # Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_ollama_ai(chat_request: ChatRequest):
-    """Chat directly with Ollama AI"""
+    """Chat with Ollama AI using two-phase strategy for site management"""
     
     # Generate session ID if not provided
     session_id = chat_request.session_id or str(uuid.uuid4())
@@ -1193,93 +1327,486 @@ async def chat_with_ollama_ai(chat_request: ChatRequest):
         
         user_message = chat_request.message.strip()
         
-        # Get or create session history
+        # Get or create session history and state
         if session_id not in chat_sessions:
-            chat_sessions[session_id] = []
-        
-        session_history = chat_sessions[session_id]
-        
-        # Build conversation context for better responses
-        conversation_context = ""
-        if session_history:
-            # Include last 5 exchanges for context
-            recent_history = session_history[-10:]  # Last 10 messages (5 exchanges)
-            for msg in recent_history:
-                role = "Human" if msg["role"] == "user" else "Assistant"
-                conversation_context += f"{role}: {msg['content']}\n"
-        
-        # Create the prompt with context
-        if conversation_context:
-            full_prompt = f"""Previous conversation:
-{conversation_context}
-Human: {user_message}
-Assistant:"""
-        else:
-            full_prompt = f"Human: {user_message}\nAssistant:"
-        
-        # Generate response from Ollama
-        response = client.generate(
-            model="llama3.1:8b",
-            prompt=full_prompt,
-            options={
-                "num_predict": 500,  # Allow longer responses
-                "temperature": 0.7,  # Slightly creative
-                "top_p": 0.9,       # Good balance
-                "stop": ["Human:", "human:", "User:", "user:"]  # Stop at next human input
+            chat_sessions[session_id] = {
+                "messages": [],
+                "phase": 1,  # Phase 1: Data Collection, Phase 2: JSON Generation
+                "operation_type": None,
+                "gathered_data": {},
+                "ready_for_execution": False
             }
+        
+        session = chat_sessions[session_id]
+        session_history = session["messages"]
+        
+        # Handle user confirmation for execution
+        if session["ready_for_execution"] and user_message.lower() in ['yes', 'y', 'confirm', 'proceed']:
+            # Move to Phase 2: JSON Generation
+            result = await execute_phase_2_json_generation(session, client)
+            return result
+        
+        # Handle user cancellation
+        if user_message.lower() in ['no', 'cancel', 'stop', 'abort']:
+            # Reset session
+            session["phase"] = 1
+            session["operation_type"] = None
+            session["gathered_data"] = {}
+            session["ready_for_execution"] = False
+            
+            return ChatResponse(
+                message="Operation cancelled. How else can I help you with site management?",
+                status="cancelled",
+                session_id=session_id,
+                context={"phase": 1, "operation": None},
+                data={}
+            )
+        
+        # Phase 1: Data Collection and Intent Recognition
+        result = await execute_phase_1_data_collection(
+            session, client, user_message, user_id, session_id
         )
         
-        ai_response = response['response'].strip()
-        
-        # Store the conversation
-        timestamp = datetime.now().isoformat()
-        
-        # Add user message to history
-        session_history.append({
-            "role": "user",
-            "content": user_message,
-            "timestamp": timestamp,
-            "user_id": user_id
-        })
-        
-        # Add AI response to history
-        session_history.append({
-            "role": "assistant", 
-            "content": ai_response,
-            "timestamp": timestamp,
-            "model": "llama3.1:8b"
-        })
-        
-        # Keep only last 50 messages per session to prevent memory issues
-        if len(session_history) > 50:
-            session_history = session_history[-50:]
-            chat_sessions[session_id] = session_history
-        
-        return ChatResponse(
-            message=ai_response,
-            status="completed",
-            session_id=session_id,
-            context={
-                "message_count": len(session_history),
-                "model": "llama3.1:8b",
-                "timestamp": timestamp
-            },
-            data={
-                "user_id": user_id,
-                "response_length": len(ai_response)
-            }
-        )
+        return result
         
     except HTTPException:
-        # Re-raise HTTP exceptions
         raise
-        
     except Exception as e:
-        print(f"Chat error: {e}")
+        logger.error(f"Chat error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chat processing failed: {str(e)}"
         )
+
+async def execute_phase_1_data_collection(session, client, user_message, user_id, session_id):
+    """Phase 1: Collect data and determine operation intent"""
+    
+    session_history = session["messages"]
+    
+    # Build conversation context
+    conversation_context = ""
+    if session_history:
+        recent_history = session_history[-10:]  # Last 10 messages
+        for msg in recent_history:
+            role = "Human" if msg["role"] == "user" else "Assistant"
+            conversation_context += f"{role}: {msg['content']}\n"
+    
+    # Create Phase 1 prompt
+    full_prompt = f"""You are a PulsePro Site Management Assistant. Your job is to collect information and understand user intent for site management operations.
+
+AVAILABLE OPERATIONS:
+1. CREATE_SITE - Create new sites
+2. DELETE_SITE - Delete existing sites  
+3. UPDATE_SITE - Modify site information
+4. SHOW_SITES - Display all sites
+5. ASSIGN_USERS - Add users to sites
+6. UNASSIGN_USERS - Remove users from sites
+
+YOUR TASK: Have a natural conversation to collect ALL required information.
+
+REQUIRED FIELDS BY OPERATION:
+
+CREATE_SITE needs:
+- location_name (site name)
+- address_field1 (primary address)
+- country_id (1=India, 2=USA)
+- state_id (numeric state identifier)
+- city_id (numeric city identifier)  
+- reporting_timezone (UTC, Asia/Kolkata, etc.)
+
+DELETE_SITE needs:
+- location_name or location_id (which site to delete)
+
+UPDATE_SITE needs:
+- location_name or location_id (which site to update)
+- Fields to update (any from CREATE_SITE list)
+
+SHOW_SITES needs:
+- No additional info required
+
+ASSIGN_USERS needs:
+- location_name or location_id (which site)
+- user_names (which users to assign)
+
+UNASSIGN_USERS needs:
+- location_name or location_id (which site)
+- user_names (which users to remove)
+
+CONVERSATION STRATEGY:
+1. Identify what operation user wants
+2. Ask for missing required information ONE field at a time
+3. Be conversational and helpful
+4. When you have ALL required info, ask for confirmation
+5. If user confirms, say: "READY_FOR_EXECUTION"
+
+CONVERSATION RULES:
+- Ask ONE question at a time
+- Give examples for numeric fields
+- For names (sites/users), accept natural names - system will convert to IDs
+- Stay focused on site management only
+- Be friendly but systematic
+
+CONVERSATION HISTORY:
+{conversation_context}
+
+USER MESSAGE: {user_message}
+
+Respond naturally to collect the next piece of information needed:"""
+
+    # Generate response from Ollama
+    response = client.generate(
+        model="llama3.1:8b",
+        prompt=full_prompt,
+        options={
+            "num_predict": 300,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "stop": ["Human:", "human:", "User:", "user:"]
+        }
+    )
+    
+    ai_response = response['response'].strip()
+    timestamp = datetime.now().isoformat()
+    
+    # Store the conversation
+    session_history.append({
+        "role": "user",
+        "content": user_message,
+        "timestamp": timestamp,
+        "user_id": user_id
+    })
+    
+    session_history.append({
+        "role": "assistant", 
+        "content": ai_response,
+        "timestamp": timestamp,
+        "model": "llama3.1:8b",
+        "phase": 1
+    })
+    
+    # Check if ready for execution
+    if "READY_FOR_EXECUTION" in ai_response:
+        session["ready_for_execution"] = True
+        
+        # Extract operation type from conversation
+        conversation_text = " ".join([msg["content"] for msg in session_history])
+        session["operation_type"] = extract_operation_type(conversation_text)
+        
+        clean_response = ai_response.replace("READY_FOR_EXECUTION", "").strip()
+        clean_response += "\n\nPlease confirm: Should I proceed with this operation? (yes/no)"
+        
+        return ChatResponse(
+            message=clean_response,
+            status="confirmation_needed",
+            session_id=session_id,
+            context={
+                "phase": 1,
+                "ready_for_execution": True,
+                "operation_type": session["operation_type"]
+            },
+            data={"awaiting_confirmation": True}
+        )
+    
+    # Keep conversation history manageable
+    if len(session_history) > 20:
+        session_history = session_history[-20:]
+    
+    return ChatResponse(
+        message=ai_response,
+        status="collecting_info",
+        session_id=session_id,
+        context={
+            "phase": 1,
+            "message_count": len(session_history),
+            "operation_type": session["operation_type"]
+        },
+        data={"user_id": user_id}
+    )
+
+async def execute_phase_2_json_generation(session, client):
+    """Phase 2: Convert conversation to JSON and execute operation"""
+    
+    session_history = session["messages"]
+    operation_type = session["operation_type"]
+    
+    if not operation_type:
+        # Try to extract operation type again
+        conversation_text = " ".join([msg["content"] for msg in session_history])
+        operation_type = extract_operation_type(conversation_text)
+    
+    if not operation_type:
+        return ChatResponse(
+            message="I couldn't determine the operation type. Please start over.",
+            status="error",
+            session_id=session["session_id"],
+            context={"phase": 1, "error": "operation_type_not_found"},
+            data={}
+        )
+    
+    # Build conversation history for analysis
+    conversation_context = ""
+    for msg in session_history:
+        role = "Human" if msg["role"] == "user" else "Assistant"
+        conversation_context += f"{role}: {msg['content']}\n"
+    
+    # API specifications for JSON generation
+    api_specs = {
+        "CREATE_SITE": {
+            "method": "POST",
+            "endpoint": "/customer/add_location/",
+            "required_fields": ["location_name", "address_field1", "country_id", "state_id", "city_id", "reporting_timezone"]
+        },
+        "DELETE_SITE": {
+            "method": "DELETE", 
+            "endpoint": "/customer/locations/{location_id}/",
+            "required_fields": ["location_name"]
+        },
+        "UPDATE_SITE": {
+            "method": "POST",
+            "endpoint": "/customer/edit_location/save/?location_id={location_id}",
+            "required_fields": ["location_name"]
+        },
+        "SHOW_SITES": {
+            "method": "POST",
+            "endpoint": "/customer/locations/",
+            "required_fields": []
+        },
+        "ASSIGN_USERS": {
+            "method": "POST",
+            "endpoint": "/customer/add_location_to_multiple_user/",
+            "required_fields": ["location_name", "user_names"]
+        },
+        "UNASSIGN_USERS": {
+            "method": "POST",
+            "endpoint": "/customer/delete_user_to_location_mapping/",
+            "required_fields": ["location_name", "user_names"]
+        }
+    }
+    
+    # Create Phase 2 prompt for JSON generation
+    json_prompt = f"""You are a JSON Generator for PulsePro Site Management API calls.
+
+TASK: Convert the conversation history into a properly formatted JSON structure for {operation_type}.
+
+CONVERSATION HISTORY TO ANALYZE:
+{conversation_context}
+
+OPERATION: {operation_type}
+API SPEC: {json.dumps(api_specs.get(operation_type, {}), indent=2)}
+
+INSTRUCTIONS:
+1. Extract all relevant data from the conversation history
+2. Create appropriate JSON structure for {operation_type}
+3. Use correct data types (string, integer, boolean, array)
+4. For CREATE_SITE, include ALL fields with defaults for optional ones
+5. For location/user names, keep them as names (system will resolve IDs)
+
+OUTPUT ONLY VALID JSON in this format:
+{{
+  "operation": "{operation_type}",
+  "data": {{
+    // extracted data here
+  }}
+}}
+
+For CREATE_SITE example:
+{{
+  "operation": "CREATE_SITE",
+  "data": {{
+    "location_name": "extracted_name",
+    "address_field1": "extracted_address",
+    "country_id": 1,
+    "state_id": extracted_state_id,
+    "city_id": extracted_city_id,
+    "reporting_timezone": "extracted_timezone",
+    "address_field2": "",
+    "pincode": "",
+    "mobile": "",
+    "location_number": "",
+    "location_code": "",
+    "to_email": "",
+    "cc_email": "",
+    "geo_fencing_enabled": false,
+    "geo_fencing_distance": 0,
+    "lat": 0.0,
+    "lng": 0.0,
+    "map_link": "",
+    "city_list": [],
+    "state_list": [],
+    "has_custom_field": false,
+    "is_schedule_active": false
+  }}
+}}
+
+Generate JSON now:"""
+
+    # Generate JSON structure from Ollama
+    response = client.generate(
+        model="llama3.1:8b",
+        prompt=json_prompt,
+        options={
+            "num_predict": 400,
+            "temperature": 0.3,  # Lower temperature for more structured output
+            "top_p": 0.8
+        }
+    )
+    
+    json_response = response['response'].strip()
+    
+    # Parse JSON from response
+    try:
+        json_structure = extract_json_from_response(json_response)
+        
+        if json_structure:
+            # Execute the operation
+            execution_result = await execute_site_operation(json_structure)
+            
+            # Reset session for next operation
+            session["phase"] = 1
+            session["operation_type"] = None
+            session["gathered_data"] = {}
+            session["ready_for_execution"] = False
+            
+            return ChatResponse(
+                message=f"✅ {operation_type} completed successfully! {execution_result.get('message', '')}",
+                status="completed",
+                session_id=session["session_id"],
+                context={
+                    "phase": 2,
+                    "operation": operation_type,
+                    "executed": True
+                },
+                data={
+                    "json_structure": json_structure,
+                    "execution_result": execution_result
+                }
+            )
+        else:
+            raise ValueError("Could not parse JSON from response")
+            
+    except Exception as e:
+        logger.error(f"JSON generation failed: {e}")
+        return ChatResponse(
+            message=f"❌ Failed to process the operation: {str(e)}. Please try again.",
+            status="error",
+            session_id=session["session_id"],
+            context={"phase": 2, "error": str(e)},
+            data={"raw_response": json_response}
+        )
+
+def extract_operation_type(conversation_text):
+    """Extract operation type from conversation"""
+    text_lower = conversation_text.lower()
+    
+    if any(word in text_lower for word in ['create', 'add', 'new']) and 'site' in text_lower:
+        return "CREATE_SITE"
+    elif any(word in text_lower for word in ['delete', 'remove']) and 'site' in text_lower:
+        return "DELETE_SITE"
+    elif any(word in text_lower for word in ['update', 'edit', 'modify']) and 'site' in text_lower:
+        return "UPDATE_SITE"
+    elif any(word in text_lower for word in ['show', 'list', 'display', 'view']) and 'site' in text_lower:
+        return "SHOW_SITES"
+    elif any(word in text_lower for word in ['assign', 'add']) and 'user' in text_lower:
+        return "ASSIGN_USERS"
+    elif any(word in text_lower for word in ['unassign', 'remove']) and 'user' in text_lower:
+        return "UNASSIGN_USERS"
+    
+    return None
+
+def extract_json_from_response(response):
+    """Extract JSON from Ollama response"""
+    import re
+    import json
+    
+    # Try to find JSON block
+    json_patterns = [
+        r'```json\s*(\{.*?\})\s*```',  # JSON code blocks
+        r'\{[^}]*"operation"[^}]*\}.*?\}',  # JSON with operation key
+        r'\{.*?\}',  # Any JSON-like structure
+    ]
+    
+    for pattern in json_patterns:
+        matches = re.finditer(pattern, response, re.DOTALL | re.IGNORECASE)
+        for match in matches:
+            try:
+                json_text = match.group(1) if match.groups() else match.group(0)
+                # Clean up the JSON text
+                json_text = json_text.strip()
+                return json.loads(json_text)
+            except (json.JSONDecodeError, IndexError):
+                continue
+    
+    return None
+
+async def execute_site_operation(json_structure):
+    """Execute the actual site management operation"""
+    operation = json_structure.get("operation")
+    data = json_structure.get("data", {})
+    
+    try:
+        if operation == "CREATE_SITE":
+            # Use the existing site manager to create site
+            site_data = SiteData(**data)
+            result = ollama_site_manager.create_site(site_data)
+            return {"success": True, "message": f"Site '{data.get('location_name')}' created", "data": result}
+            
+        elif operation == "SHOW_SITES":
+            result = ollama_site_manager.get_all_sites()
+            sites = result.get('locations', [])
+            return {"success": True, "message": f"Found {len(sites)} sites", "data": result}
+            
+        elif operation == "DELETE_SITE":
+            # First find the site by name to get ID
+            all_sites = ollama_site_manager.get_all_sites()
+            site_name = data.get("location_name", "")
+            
+            site_id = None
+            for site in all_sites.get('locations', []):
+                if site.get('location_name', '').lower() == site_name.lower():
+                    site_id = site.get('id')
+                    break
+            
+            if site_id:
+                result = ollama_site_manager.delete_site(site_id)
+                return {"success": True, "message": f"Site '{site_name}' deleted", "data": result}
+            else:
+                return {"success": False, "message": f"Site '{site_name}' not found"}
+        
+        # Add other operations here...
+        else:
+            return {"success": False, "message": f"Operation {operation} not implemented yet"}
+            
+    except Exception as e:
+        logger.error(f"Operation execution failed: {e}")
+        return {"success": False, "message": f"Execution failed: {str(e)}"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @app.get("/chat/sessions/{session_id}/history", response_model=StandardResponse)
 async def get_chat_history(session_id: str):

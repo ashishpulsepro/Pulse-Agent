@@ -84,8 +84,10 @@ class AuthenticationManager:
             'Origin': 'https://staging.pulsepro.ai',
             'Referer': 'https://staging.pulsepro.ai/',
         }
-        
-        payload = {"refresh": self.tokens.refresh_token}
+        refresh = self.tokens.refresh_token
+        if not refresh:
+            refresh="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODE3MTkyOCwianRpIjoiZjczZjhmMmUxNDMwNGRiZDkyMTNiOGEwNjMwOGJiMDciLCJ1c2VyX2lkIjo3NTZ9.UtjCTpxf9O-7RsibYam5-Bg6VL0Unr1mNOhRgiGk8Rk"
+        payload = {"refresh": refresh}
         
         try:
             response = requests.post(url, headers=headers, json=payload)
