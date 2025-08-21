@@ -9,10 +9,13 @@ from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import logging
+import os
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+load_dotenv()
 
 @dataclass
 class SiteData:
@@ -67,6 +70,11 @@ class AuthenticationManager:
     def __init__(self, base_url: str = "https://staging-api.pulsepro.ai"):
         self.base_url = base_url
         self.tokens: Optional[AuthTokens] = None
+        
+        # Initialize tokens with refresh token from environment if available
+        refresh_token = os.getenv('refresh')
+        if refresh_token:
+            self.tokens = AuthTokens(access_token="", refresh_token=refresh_token)
     
     def set_refresh_token(self, refresh_token: str) -> None:
         """Set the refresh token for authentication"""
@@ -74,9 +82,7 @@ class AuthenticationManager:
     
     def refresh_access_token(self) -> str:
         """Refresh the access token using refresh token"""
-        if not self.tokens or not self.tokens.refresh_token:
-            raise PulseProAPIException("No refresh token available")
-        
+       
         url = f"{self.base_url}/api/refresh/"
         headers = {
             'Accept': 'application/json, text/plain, */*',
@@ -84,10 +90,11 @@ class AuthenticationManager:
             'Origin': 'https://staging.pulsepro.ai',
             'Referer': 'https://staging.pulsepro.ai/',
         }
-        refresh = self.tokens.refresh_token
-        if not refresh:
-            refresh="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODE3MTkyOCwianRpIjoiZjczZjhmMmUxNDMwNGRiZDkyMTNiOGEwNjMwOGJiMDciLCJ1c2VyX2lkIjo3NTZ9.UtjCTpxf9O-7RsibYam5-Bg6VL0Unr1mNOhRgiGk8Rk"
+
+        refresh=os.getenv('refresh')
+        print("refresh token: ", refresh)
         payload = {"refresh": refresh}
+        print("got it")
         
         try:
             response = requests.post(url, headers=headers, json=payload)
@@ -95,12 +102,16 @@ class AuthenticationManager:
             
             data = response.json()
             access_token = data.get('access')
+            print("access token: ", access_token)
             
-            if not access_token:
-                raise PulseProAPIException("No access token in response")
+            # Initialize tokens if None, then set access token
+            if self.tokens is None:
+                self.tokens = AuthTokens(access_token="", refresh_token=refresh or "")
             
             self.tokens.access_token = access_token
             logger.info("Access token refreshed successfully")
+
+            print("Access token refreshed successfully")
             
             return access_token
             
@@ -111,6 +122,7 @@ class AuthenticationManager:
     def get_access_token(self) -> str:
         """Get current access token, refresh if needed"""
         if not self.tokens or not self.tokens.access_token:
+            print("in")
             return self.refresh_access_token()
         return self.tokens.access_token
 
@@ -134,6 +146,7 @@ class SiteManager:
     
     def create_site(self, site_data: SiteData) -> Dict[str, Any]:
         """Create a new site"""
+        print("Creating site with data: ", site_data.to_dict())
         url = f"{self.base_url}/customer/add_location/"
         headers = self._get_headers()
         
@@ -170,21 +183,61 @@ class SiteManager:
             logger.error(f"Failed to update site {location_id}: {e}")
             raise PulseProAPIException(f"Site update failed: {e}")
     
+    def create_site_by_name_only(self, location_name: str) -> Dict[str, Any]:
+        """Create a site with only the location name"""
+        url = f"{self.base_url}/customer/save_loc_by_only_name/"
+        headers = self._get_headers()
+        
+        payload = {
+            "location_name": location_name
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info(f"Site '{location_name}' created successfully with minimal data")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to create site by name only: {e}")
+            try:
+                print(f"Response status: {response.status_code}")
+                print(f"Response content: {response.text}")
+            except:
+                pass
+            raise PulseProAPIException(f"Site creation by name failed: {e}")
+
     def get_all_sites(self) -> Dict[str, Any]:
         """Get all sites"""
         url = f"{self.base_url}/customer/locations/"
         headers = self._get_headers()
         
         try:
+            # Try POST with empty JSON first
             response = requests.post(url, headers=headers, json={})
+            
+            # If POST fails, try GET request
+            if response.status_code == 400:
+                print("POST request failed, trying GET...")
+                response = requests.get(url, headers=headers)
+            
             response.raise_for_status()
             
             data = response.json()
+            print(f"Sites API response: {data}")  # Debug print
             logger.info(f"Retrieved {len(data.get('locations', []))} sites")
             return data
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get sites: {e}")
+            # Print response content for debugging
+            try:
+                print(f"Response status: {response.status_code}")
+                print(f"Response content: {response.text}")
+            except:
+                pass
             raise PulseProAPIException(f"Failed to retrieve sites: {e}")
     
     def get_site_by_id(self, location_id: int) -> Optional[Dict[str, Any]]:

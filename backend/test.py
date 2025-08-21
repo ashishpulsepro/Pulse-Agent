@@ -77,3 +77,24 @@ if __name__ == "__main__":
         print("You can now use your FastAPI integration.")
     else:
         print("\n❌ Ollama test failed. Check the errors above.")
+
+
+
+
+
+
+
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+
+uri = "mongodb+srv://ashish:Radhey@123@cluster0.3uxl669.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+# Create a new client and connect to the server
+client = MongoClient(uri, server_api=ServerApi('1'))
+
+# Send a ping to confirm a successful connection
+try:
+    client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
