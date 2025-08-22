@@ -7,6 +7,8 @@ from typing import List, Dict, Any, Optional
 import uvicorn
 from contextlib import asynccontextmanager
 import uuid
+import logging
+import json
 
 # Import from our organized files
 from site_manager import SiteData, AuthenticationManager
@@ -256,14 +258,16 @@ def get_ollama_client():
 
 
 
-import logging
-import json
+
 
 
 logging.basicConfig(
     level=logging.INFO,  # Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
+
+# Create logger instance
+logger = logging.getLogger(__name__)
 
 # SITE_PROMPT = """You are PulsePro AI Assistant for Site Management.
 
@@ -388,9 +392,33 @@ import urllib.parse
 username = "ashish"
 password = urllib.parse.quote_plus("Radhey@123")  # URL encode the password
 MONGO_URI = f"mongodb+srv://{username}:{password}@cluster0.3uxl669.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-client_mongo = MongoClient(MONGO_URI)
-db = client_mongo.Conversations
-conversations_collection = db.conversations
+
+# MongoDB client with SSL configuration
+try:
+    client_mongo = MongoClient(
+        MONGO_URI,
+        tls=True,
+        tlsAllowInvalidCertificates=True,  # For development, remove in production
+        serverSelectionTimeoutMS=5000,  # 5 second timeout
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000,
+        maxPoolSize=10
+    )
+    
+    # Test the connection
+    client_mongo.admin.command('ping')
+    db = client_mongo.Conversations
+    conversations_collection = db.conversations
+    logger.info("MongoDB connection successful")
+    MONGODB_AVAILABLE = True
+    
+except Exception as e:
+    logger.error(f"MongoDB connection failed: {e}")
+    logger.info("Continuing without MongoDB - using in-memory storage")
+    client_mongo = None
+    db = None
+    conversations_collection = None
+    MONGODB_AVAILABLE = False
 
 # Phase 1 Prompt - Intent Detection and Data Collection
 PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
@@ -460,34 +488,69 @@ RULES:
 chat_sessions = {}
 
 def save_conversation_to_db(session_id: str, role: str, message: str):
-    """Save message to MongoDB"""
+    """Save message to MongoDB if available, otherwise store in memory"""
     try:
-        conversations_collection.insert_one({
-            "session_id": session_id,
+        if MONGODB_AVAILABLE and conversations_collection is not None:
+            conversations_collection.insert_one({
+                "session_id": session_id,
+                "role": role,
+                "message": message,
+                "timestamp": datetime.now()
+            })
+        else:
+            # Fallback to in-memory storage
+            if session_id not in chat_sessions:
+                chat_sessions[session_id] = {"conversation": []}
+            chat_sessions[session_id]["conversation"].append({
+                "role": role,
+                "message": message,
+                "timestamp": datetime.now()
+            })
+    except Exception as e:
+        logger.error(f"Failed to save to MongoDB: {e}")
+        # Fallback to in-memory storage
+        if session_id not in chat_sessions:
+            chat_sessions[session_id] = {"conversation": []}
+        chat_sessions[session_id]["conversation"].append({
             "role": role,
             "message": message,
             "timestamp": datetime.now()
         })
-    except Exception as e:
-        logger.error(f"Failed to save to MongoDB: {e}")
 
 def get_conversation_from_db(session_id: str) -> list:
-    """Get conversation history from MongoDB"""
+    """Get conversation history from MongoDB if available, otherwise from memory"""
     try:
-        messages = conversations_collection.find(
-            {"session_id": session_id}
-        ).sort("timestamp", 1)
-        return list(messages)
+        if MONGODB_AVAILABLE and conversations_collection is not None:
+            messages = conversations_collection.find(
+                {"session_id": session_id}
+            ).sort("timestamp", 1)
+            return list(messages)
+        else:
+            # Fallback to in-memory storage
+            if session_id in chat_sessions:
+                return chat_sessions[session_id].get("conversation", [])
+            return []
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
+        # Fallback to in-memory storage
+        if session_id in chat_sessions:
+            return chat_sessions[session_id].get("conversation", [])
         return []
 
 def clear_conversation_from_db(session_id: str):
-    """Clear conversation history from MongoDB"""
+    """Clear conversation history from MongoDB if available, otherwise from memory"""
     try:
-        conversations_collection.delete_many({"session_id": session_id})
+        if MONGODB_AVAILABLE and conversations_collection is not None:
+            conversations_collection.delete_many({"session_id": session_id})
+        else:
+            # Fallback to in-memory storage
+            if session_id in chat_sessions:
+                chat_sessions[session_id]["conversation"] = []
     except Exception as e:
         logger.error(f"Failed to clear from MongoDB: {e}")
+        # Fallback to in-memory storage
+        if session_id in chat_sessions:
+            chat_sessions[session_id]["conversation"] = []
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_agent(chat_request: ChatRequest):
@@ -736,7 +799,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
 
 @app.get("/chat/history/{session_id}")
 async def get_chat_history_endpoint(session_id: str):
-    """Get conversation history for a session from MongoDB"""
+    """Get conversation history for a session from MongoDB or memory"""
     try:
         messages = get_conversation_from_db(session_id)
         return {
@@ -745,9 +808,10 @@ async def get_chat_history_endpoint(session_id: str):
                 {
                     "role": msg["role"],
                     "message": msg["message"], 
-                    "timestamp": msg["timestamp"].isoformat()
+                    "timestamp": msg["timestamp"].isoformat() if hasattr(msg["timestamp"], 'isoformat') else str(msg["timestamp"])
                 } for msg in messages
-            ]
+            ],
+            "storage_type": "mongodb" if MONGODB_AVAILABLE else "memory"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
@@ -809,7 +873,9 @@ async def chat_health_check():
             data={
                 "status": "ready",
                 "model": "llama3.1:8b",
-                "test_response": response['response'].strip()
+                "test_response": response['response'].strip(),
+                "mongodb_available": MONGODB_AVAILABLE,
+                "storage_type": "mongodb" if MONGODB_AVAILABLE else "memory"
             }
         )
         
@@ -819,7 +885,9 @@ async def chat_health_check():
             message="Chat system is unhealthy",
             data={
                 "status": "error",
-                "error": str(e)
+                "error": str(e),
+                "mongodb_available": MONGODB_AVAILABLE,
+                "storage_type": "mongodb" if MONGODB_AVAILABLE else "memory"
             }
         )
 

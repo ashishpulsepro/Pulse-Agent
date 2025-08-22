@@ -257,7 +257,7 @@ class SiteManager:
         headers = self._get_headers()
         
         try:
-            response = requests.delete(url, headers=headers)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             
             logger.info(f"Site ID {location_id} deleted successfully")
