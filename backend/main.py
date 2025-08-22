@@ -7,12 +7,9 @@ from typing import List, Dict, Any, Optional
 import uvicorn
 from contextlib import asynccontextmanager
 import uuid
-import logging
-import json
 
 # Import from our organized files
 from site_manager import SiteData, AuthenticationManager
-from ai_agent import OllamaIntegratedSiteManager  # Updated import
 
 class StandardResponse(BaseModel):
     success: bool
@@ -258,16 +255,14 @@ def get_ollama_client():
 
 
 
+import logging
+import json
 
 
-
-logging.basicConfig(
-    level=logging.INFO,  # Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
-
-# Create logger instance
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 # SITE_PROMPT = """You are PulsePro AI Assistant for Site Management.
 
@@ -392,33 +387,9 @@ import urllib.parse
 username = "ashish"
 password = urllib.parse.quote_plus("Radhey@123")  # URL encode the password
 MONGO_URI = f"mongodb+srv://{username}:{password}@cluster0.3uxl669.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
-# MongoDB client with SSL configuration
-try:
-    client_mongo = MongoClient(
-        MONGO_URI,
-        tls=True,
-        tlsAllowInvalidCertificates=True,  # For development, remove in production
-        serverSelectionTimeoutMS=5000,  # 5 second timeout
-        connectTimeoutMS=5000,
-        socketTimeoutMS=5000,
-        maxPoolSize=10
-    )
-    
-    # Test the connection
-    client_mongo.admin.command('ping')
-    db = client_mongo.Conversations
-    conversations_collection = db.conversations
-    logger.info("MongoDB connection successful")
-    MONGODB_AVAILABLE = True
-    
-except Exception as e:
-    logger.error(f"MongoDB connection failed: {e}")
-    logger.info("Continuing without MongoDB - using in-memory storage")
-    client_mongo = None
-    db = None
-    conversations_collection = None
-    MONGODB_AVAILABLE = False
+client_mongo = MongoClient(MONGO_URI)
+db = client_mongo.Conversations
+conversations_collection = db.conversations
 
 # Phase 1 Prompt - Intent Detection and Data Collection
 PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
@@ -443,24 +414,53 @@ PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
 ====================YOUR GOAL====================
 1. Understand what operation the user wants (CREATE, VIEW, or DELETE)
 2. Collect all required data for that operation
-3.After collecting all the required data for the SUPPORTED OPERATIONS,
+3. Take reference from the below given examples for each operation
+4. After collecting all the required data for the SUPPORTED OPERATIONS,
 When you have all required information, ask for confirmation with exactly this message(strictly):
 
 "I have all the information needed. Type 'Proceed' to execute this operation."
 
-====================EXAMPLES====================
+====================AVAILABLE SITES====================
+{all_sites_list}
+
+====================EXAMPLE For Create Site operation====================
+1st Example for Create Site:
+
 User: "Create a site"
 Assistant: "I'll help you create a new site. What should be the name/location of this site?"
-
 User: "Mumbai Office"  
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+2nd Example for Create Site:
+
+User:"Create a site Name Bangalore"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+note:do not use this example as reference for any other operation than Create site
+
+====================EXAMPLE For Delete Site operation====================
+1st Example for Delete Site:
 
 User: "Delete Delhi branch"
 Assistant: "I have all the information needed. Type 'Proceed' to execute this operation."
 
+2nd Example for Delete Site:
+
+User: "I want to delete a site"
+Assistant: "Sure, which site do you want to delete? Here are the available sites: {all_sites_list}"
+User: "Bangalore Hub"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+note:do not use this example as reference for any other operation than delete site
+
+====================EXAMPLE For View Site operation====================
+
 User: "Show me all sites"
 Assistant: "I have all the information needed. Type 'Proceed' to execute this operation."
+
+note:do not use this example as reference for any other operation than View site
 """
+
 
 # Phase 2 Prompt - JSON Generation
 PHASE_2_PROMPT = """You are a JSON generator for PulsePro Site operations.
@@ -488,69 +488,34 @@ RULES:
 chat_sessions = {}
 
 def save_conversation_to_db(session_id: str, role: str, message: str):
-    """Save message to MongoDB if available, otherwise store in memory"""
+    """Save message to MongoDB"""
     try:
-        if MONGODB_AVAILABLE and conversations_collection is not None:
-            conversations_collection.insert_one({
-                "session_id": session_id,
-                "role": role,
-                "message": message,
-                "timestamp": datetime.now()
-            })
-        else:
-            # Fallback to in-memory storage
-            if session_id not in chat_sessions:
-                chat_sessions[session_id] = {"conversation": []}
-            chat_sessions[session_id]["conversation"].append({
-                "role": role,
-                "message": message,
-                "timestamp": datetime.now()
-            })
-    except Exception as e:
-        logger.error(f"Failed to save to MongoDB: {e}")
-        # Fallback to in-memory storage
-        if session_id not in chat_sessions:
-            chat_sessions[session_id] = {"conversation": []}
-        chat_sessions[session_id]["conversation"].append({
+        conversations_collection.insert_one({
+            "session_id": session_id,
             "role": role,
             "message": message,
             "timestamp": datetime.now()
         })
+    except Exception as e:
+        logger.error(f"Failed to save to MongoDB: {e}")
 
 def get_conversation_from_db(session_id: str) -> list:
-    """Get conversation history from MongoDB if available, otherwise from memory"""
+    """Get conversation history from MongoDB"""
     try:
-        if MONGODB_AVAILABLE and conversations_collection is not None:
-            messages = conversations_collection.find(
-                {"session_id": session_id}
-            ).sort("timestamp", 1)
-            return list(messages)
-        else:
-            # Fallback to in-memory storage
-            if session_id in chat_sessions:
-                return chat_sessions[session_id].get("conversation", [])
-            return []
+        messages = conversations_collection.find(
+            {"session_id": session_id}
+        ).sort("timestamp", 1)
+        return list(messages)
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
-        # Fallback to in-memory storage
-        if session_id in chat_sessions:
-            return chat_sessions[session_id].get("conversation", [])
         return []
 
 def clear_conversation_from_db(session_id: str):
-    """Clear conversation history from MongoDB if available, otherwise from memory"""
+    """Clear conversation history from MongoDB"""
     try:
-        if MONGODB_AVAILABLE and conversations_collection is not None:
-            conversations_collection.delete_many({"session_id": session_id})
-        else:
-            # Fallback to in-memory storage
-            if session_id in chat_sessions:
-                chat_sessions[session_id]["conversation"] = []
+        conversations_collection.delete_many({"session_id": session_id})
     except Exception as e:
         logger.error(f"Failed to clear from MongoDB: {e}")
-        # Fallback to in-memory storage
-        if session_id in chat_sessions:
-            chat_sessions[session_id]["conversation"] = []
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_agent(chat_request: ChatRequest):
@@ -587,6 +552,30 @@ async def chat_with_agent(chat_request: ChatRequest):
             data={}
         )
 
+
+# Function to get formatted site list
+def get_sites_list_formatted():
+    """Get all sites and format them as a string"""
+    initialize_ollama_site_manager()
+    try:
+        if ollama_site_manager:
+            result = ollama_site_manager.get_all_sites()
+            sites = result.get('locations', [])
+            if sites:
+                # Format as numbered list
+                sites_list = "\n".join([f"{i+1}. {site.get('location_name', 'Unknown')}" 
+                                      for i, site in enumerate(sites)])
+                return f"Current sites:\n{sites_list}"
+            else:
+                return "No sites currently exist."
+        else:
+            return "Site information unavailable."
+    except Exception as e:
+        return "Unable to retrieve sites."
+
+
+
+# Updated execute_phase_1 function
 async def execute_phase_1(session_id: str, user_message: str, client) -> ChatResponse:
     """Phase 1: Normal chat - Intent detection and data collection"""
     
@@ -597,8 +586,15 @@ async def execute_phase_1(session_id: str, user_message: str, client) -> ChatRes
         role = "User" if msg["role"] == "user" else "Assistant"
         conversation_history += f"{role}: {msg['message']}\n"
     
+    # Get current sites list
+    sites_list = get_sites_list_formatted()
+    print(f"Available sites: {sites_list}")
+    
+    # Format the prompt with sites list
+    formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list)
+    
     # Create full prompt for Phase 1
-    full_prompt = f"""{PHASE_1_PROMPT}
+    full_prompt = f"""{formatted_prompt}
 
 ====================CONVERSATION HISTORY====================
 {conversation_history}
@@ -637,7 +633,8 @@ async def execute_phase_1(session_id: str, user_message: str, client) -> ChatRes
         session_id=session_id,
         context={
             "phase": 1,
-            "conversation_length": len(get_conversation_from_db(session_id))
+            "conversation_length": len(get_conversation_from_db(session_id)),
+            "available_sites": len(sites_list.split('\n')) - 1 if 'Current sites:' in sites_list else 0
         },
         data={}
     )
@@ -799,7 +796,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
 
 @app.get("/chat/history/{session_id}")
 async def get_chat_history_endpoint(session_id: str):
-    """Get conversation history for a session from MongoDB or memory"""
+    """Get conversation history for a session from MongoDB"""
     try:
         messages = get_conversation_from_db(session_id)
         return {
@@ -808,10 +805,9 @@ async def get_chat_history_endpoint(session_id: str):
                 {
                     "role": msg["role"],
                     "message": msg["message"], 
-                    "timestamp": msg["timestamp"].isoformat() if hasattr(msg["timestamp"], 'isoformat') else str(msg["timestamp"])
+                    "timestamp": msg["timestamp"].isoformat()
                 } for msg in messages
-            ],
-            "storage_type": "mongodb" if MONGODB_AVAILABLE else "memory"
+            ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
@@ -873,9 +869,7 @@ async def chat_health_check():
             data={
                 "status": "ready",
                 "model": "llama3.1:8b",
-                "test_response": response['response'].strip(),
-                "mongodb_available": MONGODB_AVAILABLE,
-                "storage_type": "mongodb" if MONGODB_AVAILABLE else "memory"
+                "test_response": response['response'].strip()
             }
         )
         
@@ -885,9 +879,7 @@ async def chat_health_check():
             message="Chat system is unhealthy",
             data={
                 "status": "error",
-                "error": str(e),
-                "mongodb_available": MONGODB_AVAILABLE,
-                "storage_type": "mongodb" if MONGODB_AVAILABLE else "memory"
+                "error": str(e)
             }
         )
 
