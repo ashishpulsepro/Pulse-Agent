@@ -432,7 +432,7 @@ PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
 
 ====================SUPPORTED OPERATIONS====================
 1. CREATE_SITE - Create a new site
-   Required data: location_name (string)
+   Required data: location_name (string) only
 
 2. VIEW_SITES - Show all existing sites  
    Required data: none
