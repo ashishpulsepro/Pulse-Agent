@@ -420,8 +420,6 @@ When you have all required information, ask for confirmation with exactly this m
 
 "I have all the information needed. Type 'Proceed' to execute this operation."
 
-====================AVAILABLE SITES====================
-{all_sites_list}
 
 ====================EXAMPLE For Create Site operation====================
 1st Example for Create Site:
@@ -459,6 +457,12 @@ User: "Show me all sites"
 Assistant: "I have all the information needed. Type 'Proceed' to execute this operation."
 
 note:do not use this example as reference for any other operation than View site
+
+====================AVAILABLE SITES====================
+Never list the sites as response unless it is about the delete operation.(Strictly follow this rule)
+Only list it as response when user wants to delete a site and you need to show available sites for deletion.
+{all_sites_list}
+
 """
 
 
