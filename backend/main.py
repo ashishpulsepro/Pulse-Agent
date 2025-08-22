@@ -400,6 +400,7 @@ PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
 * Be conversational but focused on collecting required information
 * NEVER assume or invent values. Always ask the user for missing information
 * Use conversation history to track what data has already been collected
+* In any case of user uses any words like cancle , stop , exit , abort , halt , quit , terminate , end  etc, immediately respond with "Operation cancelled. No action taken." and stop the conversation.
 
 ====================SUPPORTED OPERATIONS====================
 1. CREATE_SITE - Create a new site
@@ -539,6 +540,17 @@ async def chat_with_agent(chat_request: ChatRequest):
         save_conversation_to_db(session_id, "user", user_message)
         
         # Check if user wants to execute (Phase 2)
+        cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end"]
+        if any(trigger in user_message.lower() for trigger in cancel_triggers):
+            clear_conversation_from_db(session_id)
+            return ChatResponse(
+                message="Operation cancelled. No action taken.",
+                status="cancelled",
+                session_id=session_id,
+                context={"phase": "cancelled"},
+                data={}
+            )
+        
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
         if user_message.lower().strip() in execution_triggers:
             return await execute_phase_2(session_id, client)
@@ -567,7 +579,7 @@ def get_sites_list_formatted():
             sites = result.get('locations', [])
             if sites:
                 # Format as numbered list
-                sites_list = "\n".join([f"{i+1}. {site.get('location_name', 'Unknown')}" 
+                sites_list = "\n".join([f"{i+1}. {site.get('location_name', 'Unknown'),{site.get('city')}, {site.get('state')}}" 
                                       for i, site in enumerate(sites)])
                 return f"Current sites:\n{sites_list}"
             else:
@@ -613,7 +625,7 @@ async def execute_phase_1(session_id: str, user_message: str, client) -> ChatRes
         model="llama3.1:8b",
         prompt=full_prompt,
         options={
-            "num_predict": 150,
+            "num_predict": 450,
             "temperature": 0.7
         }
     )
@@ -667,7 +679,7 @@ async def execute_phase_2(session_id: str, client) -> ChatResponse:
             model="llama3.1:8b",
             prompt=phase_2_prompt,
             options={
-                "num_predict": 100,
+                "num_predict": 500,
                 "temperature": 0.1  # Low temperature for precise JSON
             }
         )
@@ -772,7 +784,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
             result = ollama_site_manager.get_all_sites()
             sites = result.get('locations', [])
             if sites:
-                site_list = "\n".join([f"• {site.get('location_name', 'Unknown')}" for site in sites])
+                site_list = "\n".join([f"• {site.get('location_name', 'Unknown')} ,{site.get('city'), site.get('state')}" for site in sites])
                 message = f"📍 Found {len(sites)} sites:\n{site_list}"
             else:
                 message = "📍 No sites found"
@@ -782,7 +794,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
                 "message": message,
                 "data": result
             }
-        
+         
         else:
             return {
                 "success": False,
