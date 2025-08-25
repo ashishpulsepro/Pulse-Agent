@@ -412,6 +412,12 @@ PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
 3. DELETE_SITE - Delete an existing site
    Required data: location_name (string)
 
+4> ASSIGN_USERS_TO_SITE - Assign users to a site
+    Required data: location_name (string), user_names (list of strings)
+
+5> UNASSIGN_USERS_FROM_SITE - Unassign users from a site
+    Required data: location_name (string), user_names (list of strings)
+
 ====================YOUR GOAL====================
 1. Understand what operation the user wants (CREATE, VIEW, or DELETE)
 2. Collect all required data for that operation
@@ -459,11 +465,36 @@ Assistant: "I have all the information needed. Type 'Proceed' to execute this op
 
 note:do not use this example as reference for any other operation than View site
 
+
+====================EXAMPLE For Assign Users to Site operation====================
+User: ""Assign users to site"
+Assistant: " What location do you want to assign users to? Here are the available sites: {all_sites_list}"
+User: "Delhi Office"
+Assistant: "Which users do you want to assign to this site? Here are the available users :{all_users_list}"
+User: "Ashish , John"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+note:do not use this example as reference for any other operation than Assign Users to site operation
+
+====================EXAMPLE For Unassign Users from Site operation====================
+User: ""Unassign users to site"
+Assistant: " What location do you want to unassign users to? Here are the available sites: {all_sites_list}"
+User: "Delhi Office"
+Assistant: "Which users do you want to unassign to this site? Here are the available users :{all_users_list}"
+User: "Ashish , John"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+note:do not use this example as reference for any other operation than UnAssign Users to site operation
+
 ====================AVAILABLE SITES====================
-Never list the sites as response unless it is about the delete operation.(Strictly follow this rule)
-Only list it as response when user wants to delete a site and you need to show available sites for deletion.
+Never list the sites as response unless it is about the delete operation and the Assign Users to site operation .(Strictly follow this rule)
+Only list it as response when user wants to delete a site or Assign Users to site and you need to show available sites .
 {all_sites_list}
 
+====================AVAILABLE Users====================
+Never list the users as response unless it is about the Assign Users to site operation and Unassign Users to site operation .(Strictly follow this rule)
+Only list it as response when user wants to Assign Users to site and you need to show available users .
+{all_users_list}
 """
 
 
@@ -481,11 +512,18 @@ For VIEW_SITES:
 For DELETE_SITE:
 {"data": {"location_name": "EXTRACTED_NAME"}, "operation_type": "DELETE_SITE"}
 
+For ASSIGN_USERS_TO_SITE:
+{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "ASSIGN_USERS_TO_SITE"}
+
+For UNASSIGN_USERS_FROM_SITE:
+{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "UNASSIGN_USERS_FROM_SITE"}
+
 RULES:
-- Extract the location_name from the conversation history
+- Extract the data from the conversation history
 - Return ONLY the JSON object, nothing else
 - No explanations, no text, no markdown, just pure JSON
 - Use the exact operation_type names shown above
+- Strictly follow the JSON format shown above , including field names and structure
 
 """
 
@@ -594,7 +632,7 @@ def get_sites_list_formatted():
 # Updated execute_phase_1 function
 async def execute_phase_1(session_id: str, user_message: str, client) -> ChatResponse:
     """Phase 1: Normal chat - Intent detection and data collection"""
-    
+    initialize_ollama_site_manager()
     # Get conversation history from MongoDB
     db_messages = get_conversation_from_db(session_id)
     conversation_history = ""
@@ -605,9 +643,11 @@ async def execute_phase_1(session_id: str, user_message: str, client) -> ChatRes
     # Get current sites list
     sites_list = get_sites_list_formatted()
     print(f"Available sites: {sites_list}")
+
+    all_user_list = ollama_site_manager.get_all_users()
     
     # Format the prompt with sites list
-    formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list)
+    formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list)
     
     # Create full prompt for Phase 1
     full_prompt = f"""{formatted_prompt}
@@ -794,6 +834,90 @@ async def execute_site_operation(operation_data: dict) -> dict:
                 "message": message,
                 "data": result
             }
+        
+        elif operation_type == "ASSIGN_USERS_TO_SITE":
+            location_name = data.get("location_name")
+            user_names = data.get("user_list", [])
+            
+            # Find site ID
+            all_sites = ollama_site_manager.get_all_sites()
+            site_id = None
+            for site in all_sites.get('locations', []):
+                if site.get('location_name', '').lower() == location_name.lower():
+                    site_id = site.get('id')
+                    break
+
+            if not site_id:
+                return {
+                    "success": False,
+                    "message": f"❌ Site '{location_name}' not found",
+                    "data": {"error": "Site not found"}
+                }
+            
+            all_users = ollama_site_manager.get_site_users(location_id=site_id)
+            user_ids= []
+            for user in all_users.get('users', []) :
+                if user.get('username', '').lower() in [uname.lower() for uname in user_names]:
+                    user_ids.append(user.get('id'))
+                    print("user ids: ",user_ids)
+
+
+            if not user_ids:
+                return {
+                    "success": False,
+                    "message": f"❌ None of the specified users were found: {', '.join(user_names)}",
+                    "data": {"error": "Users not found"}
+                }
+            
+            # Assign users
+            result = ollama_site_manager.assign_users_to_site(site_id, user_ids=user_ids)
+            return {
+                "success": True,
+                "message": f"✅ Users assigned to site '{location_name}' successfully!",
+                "data": result
+            }
+        
+        elif operation_type == "UNASSIGN_USERS_FROM_SITE":
+            location_name = data.get("location_name")
+            user_names = data.get("user_list", [])
+            
+            # Find site ID
+            all_sites = ollama_site_manager.get_all_sites()
+            site_id = None
+            for site in all_sites.get('locations', []):
+                if site.get('location_name', '').lower() == location_name.lower():
+                    site_id = site.get('id')
+                    break
+
+            if not site_id:
+                return {
+                    "success": False,
+                    "message": f"❌ Site '{location_name}' not found",
+                    "data": {"error": "Site not found"}
+                }
+            
+            all_users = ollama_site_manager.get_site_users(location_id=site_id)
+            user_ids= []
+            for user in all_users.get('users', []) :
+                if user.get('username', '').lower() in [uname.lower() for uname in user_names] and user.get('mapped'):
+                    user_ids.append(user.get('id'))
+                    print("user ids: ",user_ids)
+
+
+            if not user_ids:
+                return {
+                    "success": False,
+                    "message": f"❌ None of the specified users were found: {', '.join(user_names)}",
+                    "data": {"error": "Users not found"}
+                }
+            
+            # Unassign users
+            result = ollama_site_manager.unassign_users_from_site(mapped_location_ids=user_ids)
+            return {
+                "success": True,
+                "message": f"✅ Users unassigned from site '{location_name}' successfully!",
+                "data": result
+            }
          
         else:
             return {
@@ -802,6 +926,12 @@ async def execute_site_operation(operation_data: dict) -> dict:
                 "data": {"error": "Unknown operation"}
             }
     
+
+
+            
+    
+
+
     except Exception as e:
         logger.error(f"Site operation error: {e}")
         return {

@@ -328,3 +328,27 @@ class SiteManager:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get users for site {location_id}: {e}")
             raise PulseProAPIException(f"Failed to retrieve users: {e}")
+        
+    def get_all_users(self,limit=50, offset=0):
+        url = "https://staging-api.pulsepro.ai/customer/get_team_list/"
+        headers = self._get_headers()
+
+        payload = {
+        "count": "",
+        "limit": limit,
+        "offset": offset,
+        "orderDir": "desc",
+        "orderBy": "id",
+        "search_keyword": ""
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+
+        if response.status_code == 200:
+            data = response.json()
+            team = data.get("myTeam", [])
+            names = [member.get("member_name") for member in team]
+            return names
+        else:
+            print("Error:", response.status_code, response.text)
+            return None
