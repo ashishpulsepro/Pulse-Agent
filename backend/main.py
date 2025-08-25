@@ -1015,11 +1015,12 @@ async def execute_site_operation(operation_data: dict) -> dict:
             }
         
         elif operation_type == "VIEW_PERMISSION_SETS":
+            print("in permission sets")
             result = ollama_permission_manager.get_all_permission_sets()
-            permission_sets = result.get('permission_sets', [])
-            if permission_sets:
-                ps_list = "\n".join([f"• {ps.get('name', 'Unknown')}" for ps in permission_sets])
-                message = f"🔑 Found {len(permission_sets)} permission sets:\n{ps_list}"
+            print("result: ",result)
+            if result:
+                ps_list = "\n".join([f"• {ps.get('name', 'Unknown')}" for ps in result])
+                message = f"🔑 Found {len(result)} permission sets:\n{ps_list}"
             else:
                 message = "🔑 No permission sets found"
             

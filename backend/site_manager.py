@@ -364,6 +364,7 @@ class PermissionManager:
     def _get_headers(self) -> Dict[str, str]:
         """Get headers with authentication"""
         access_token = self.auth_manager.get_access_token()
+        print("access token in permission manager: ", access_token)
         return {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {access_token}',
