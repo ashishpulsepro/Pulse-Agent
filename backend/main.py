@@ -90,7 +90,27 @@ def initialize_ollama_site_manager():
         return False
 
 
+def initialize_ollama_permission_manager():
+    """Initialize the Ollama permission manager"""
+    global ollama_permission_manager
+    
+    try:
+        # Initialize your site manager here
+        # Replace this with your actual SiteManager initialization
+        from site_manager import PermissionManager  # Replace with actual import
+        
+        auth_manager = AuthenticationManager()
+        ollama_permission_manager = PermissionManager(auth_manager)
+        # Test the connection
 
+        
+        print("Ollama Permission Manager initialized successfully")
+        return True
+        
+    except Exception as e:
+        print(f"Failed to initialize Ollama Permission Manager: {e}")
+        ollama_permission_manager = None
+        return False
 
 # Test Ollama connection endpoint
 @app.get("/ollama/test", response_model=StandardResponse)
@@ -392,11 +412,11 @@ db = client_mongo.Conversations
 conversations_collection = db.conversations
 
 # Phase 1 Prompt - Intent Detection and Data Collection
-PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
+PHASE_1_PROMPT = """You are PulsePro AI Assistant for Handeling below listed Supported Operations.
 
 ====================CORE RULES====================
-* Handle ONLY PulsePro Site operations: CREATE, VIEW, DELETE
-* STRICTLY ignore chit-chat or unrelated queries. If unrelated, reply: "I can only help with PulsePro Site operations."
+* Handle ONLY PulsePro operations: CREATE, VIEW, DELETE, ASSIGN, UNASSIGN users and sites , CREATE and DELETE users , VIEW permission sets
+* STRICTLY ignore chit-chat or unrelated queries. If unrelated, reply: "I can only help with PulsePro  operations."
 * Be conversational but focused on collecting required information
 * NEVER assume or invent values. Always ask the user for missing information
 * Use conversation history to track what data has already been collected
@@ -412,12 +432,23 @@ PHASE_1_PROMPT = """You are PulsePro AI Assistant for Site Management.
 3. DELETE_SITE - Delete an existing site
    Required data: location_name (string)
 
-4> ASSIGN_USERS_TO_SITE - Assign users to a site
+4. ASSIGN_USERS_TO_SITE - Assign users to a site
     Required data: location_name (string), user_names (list of strings)
 
-5> UNASSIGN_USERS_FROM_SITE - Unassign users from a site
+5. UNASSIGN_USERS_FROM_SITE - Unassign users from a site
     Required data: location_name (string), user_names (list of strings)
 
+6. CREATE_USER - Create a new user
+    Required data: First Name (string), Last Name(string) , email (string) , Permission Set (string)
+
+7. DELETE_USER - Delete an existing user
+    Required data: Full Name (string)
+
+8. VIEW_USERS - Show all existing users
+    Required data: none
+
+9. VIEW_PERMISSION_SETS - Show all existing permission sets
+    Required data: none
 ====================YOUR GOAL====================
 1. Understand what operation the user wants (CREATE, VIEW, or DELETE)
 2. Collect all required data for that operation
@@ -461,7 +492,7 @@ note:do not use this example as reference for any other operation than delete si
 ====================EXAMPLE For View Site operation====================
 
 User: "Show me all sites"
-Assistant: "I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: Here is the list of all sites :{all_sites_list}
 
 note:do not use this example as reference for any other operation than View site
 
@@ -486,6 +517,39 @@ Assistant: "Great! I have all the information needed. Type 'Proceed' to execute 
 
 note:do not use this example as reference for any other operation than UnAssign Users to site operation
 
+====================EXAMPLE For Create a User operation====================
+User: "Create a user"
+Assistant: "Sure, I can help you create a new user. What is the first name of the user?"
+User: "John"
+Assistant: "Got it. What is the last name of the user?"
+User: "Doe"
+Assistant: "Thanks. What is the email address of the user?"
+User: "abc@gmail.com"
+Assistant: "What permission set should be assigned to this user? Here are the available permission sets : {all_permission_sets_list}"
+User:"Field User"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+NOTE: do not use this example as reference for any other operation than Create a User operation
+
+====================EXAMPLE For DElete a User operation====================
+User: "Delete a user"
+Assistant: "Sure, I can help you delete a user. Which user do you want to delete? Here are the available users :{all_users_list}"
+User: "John Doe"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+Note: do not use this example as reference for any other operation than Delete a User operation
+
+====================EXAMPLE For View all the User operation====================
+User: "Show me all users"
+Assistant: Here is the list of all users :{all_users_list}
+Note: do not use this example as reference for any other operation than View all users operation
+
+====================EXAMPLE For View all the Permission set operation====================
+User: "Show me all permission sets"
+Assistant: Here is the list of all permission sets :{all_permission_sets_list}
+
+Note: do not use this example as reference for any other operation than View all permission sets operation
+
 ====================AVAILABLE SITES====================
 Never list the sites as response unless it is about the delete operation and the Assign Users to site operation .(Strictly follow this rule)
 Only list it as response when user wants to delete a site or Assign Users to site and you need to show available sites .
@@ -495,6 +559,11 @@ Only list it as response when user wants to delete a site or Assign Users to sit
 Never list the users as response unless it is about the Assign Users to site operation and Unassign Users to site operation .(Strictly follow this rule)
 Only list it as response when user wants to Assign Users to site and you need to show available users .
 {all_users_list}
+
+====================AVAILABLE PERMISSION SETS====================
+Never list the permission sets as response unless it is about the Create a User operation and View all the Permission set.(Strictly follow this rule)
+Only list it as response when user wants to Create a User and you need to show available permission sets .
+{all_permission_sets_list}
 """
 
 
@@ -633,6 +702,7 @@ def get_sites_list_formatted():
 async def execute_phase_1(session_id: str, user_message: str, client) -> ChatResponse:
     """Phase 1: Normal chat - Intent detection and data collection"""
     initialize_ollama_site_manager()
+    initialize_ollama_permission_manager()
     # Get conversation history from MongoDB
     db_messages = get_conversation_from_db(session_id)
     conversation_history = ""
@@ -645,9 +715,9 @@ async def execute_phase_1(session_id: str, user_message: str, client) -> ChatRes
     print(f"Available sites: {sites_list}")
 
     all_user_list = ollama_site_manager.get_all_users()
-    
+    permission_set_list = ollama_permission_manager.get_all_permission_sets()
     # Format the prompt with sites list
-    formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list)
+    formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list,all_permission_sets_list=permission_set_list)
     
     # Create full prompt for Phase 1
     full_prompt = f"""{formatted_prompt}

@@ -352,3 +352,128 @@ class SiteManager:
         else:
             print("Error:", response.status_code, response.text)
             return None
+
+
+class PermissionManager:
+    """Class for managing permission sets"""
+    
+    def __init__(self, auth_manager: AuthenticationManager):
+        self.auth_manager = auth_manager
+        self.base_url = auth_manager.base_url
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers with authentication"""
+        access_token = self.auth_manager.get_access_token()
+        return {
+            'Accept': 'application/json, text/plain, */*',
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+            'Origin': 'https://staging.pulsepro.ai',
+            'Referer': 'https://staging.pulsepro.ai/',
+        }
+    
+    def get_all_permission_sets(self) -> List[Dict[str, Any]]:
+        """Get all permission sets with id and name"""
+        url = f"{self.base_url}/customer/get_all_permission_bundles/"
+        headers = self._get_headers()
+    
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+        
+            data = response.json()
+            permission_sets = [
+                {
+                    'id': perm.get('id'),
+                    'name': perm.get('name')
+                } 
+                for perm in data
+            ]
+            logger.info(f"Retrieved {len(permission_sets)} permission sets")
+            return permission_sets
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get permission sets: {e}")
+            raise PulseProAPIException(f"Failed to retrieve permission sets: {e}")
+
+
+
+class UserManager:   
+    """Class for managing users"""
+    def __init__(self, auth_manager: AuthenticationManager):
+        self.auth_manager = auth_manager
+        self.base_url = auth_manager.base_url
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers with authentication"""
+        access_token = self.auth_manager.get_access_token()
+        return {
+            'Accept': 'application/json, text/plain, */*',
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+            'Origin': 'https://staging.pulsepro.ai',
+            'Referer': 'https://staging.pulsepro.ai/',
+        }
+    
+    def create_user(self, first_name: str,last_name:str, email: str, permission_set_ids: List[int]) -> Dict[str, Any]:
+        """Create a new user"""
+        url = f"{self.base_url}/customer/add_team_member/"
+        headers = self._get_headers()
+        
+        payload = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "permissionSets": permission_set_ids
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            logger.info(f"User '{first_name}' created successfully")
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to create user '{name}': {e}")
+            raise PulseProAPIException(f"User creation failed: {e}")
+    
+    def delete_user(self, user_id: int) -> Dict[str, Any]:
+        """Delete a user"""
+        url = f"{self.base_url}/customer/get_team_list/{user_id}/"
+        headers = self._get_headers()
+        
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            
+            logger.info(f"User ID {user_id} deleted successfully")
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to delete user ID {user_id}: {e}")
+            raise PulseProAPIException(f"User deletion failed: {e}")
+
+    def get_all_users(self,limit=50, offset=0):
+        url = "https://staging-api.pulsepro.ai/customer/get_team_list/"
+        headers = self._get_headers()
+
+        payload = {
+        "count": "",
+        "limit": limit,
+        "offset": offset,
+        "orderDir": "desc",
+        "orderBy": "id",
+        "search_keyword": ""
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+
+        if response.status_code == 200:
+            data = response.json()
+            team = data.get("myTeam", [])
+            names = [member.get("member_name") for member in team]
+            return names
+        else:
+            print("Error:", response.status_code, response.text)
+            return None
