@@ -111,6 +111,28 @@ def initialize_ollama_permission_manager():
         print(f"Failed to initialize Ollama Permission Manager: {e}")
         ollama_permission_manager = None
         return False
+    
+def initialize_ollama_user_manager():
+    """Initialize the Ollama user manager"""
+    global ollama_user_manager
+    
+    try:
+        # Initialize your site manager here
+        # Replace this with your actual SiteManager initialization
+        from site_manager import UserManager  # Replace with actual import
+        
+        auth_manager = AuthenticationManager()
+        ollama_user_manager = UserManager(auth_manager)
+        # Test the connection
+
+        
+        print("Ollama User Manager initialized successfully")
+        return True
+        
+    except Exception as e:
+        print(f"Failed to initialize Ollama User Manager: {e}")
+        ollama_user_manager = None
+        return False
 
 # Test Ollama connection endpoint
 @app.get("/ollama/test", response_model=StandardResponse)
@@ -412,160 +434,95 @@ db = client_mongo.Conversations
 conversations_collection = db.conversations
 
 # Phase 1 Prompt - Intent Detection and Data Collection
-PHASE_1_PROMPT = """You are PulsePro AI Assistant for Handeling below listed Supported Operations.
+PHASE_1_PROMPT = """You are PulsePro AI Assistant.
 
 ====================CORE RULES====================
-* Handle ONLY PulsePro operations: CREATE, VIEW, DELETE, ASSIGN, UNASSIGN users and sites , CREATE and DELETE users , VIEW permission sets
-* STRICTLY ignore chit-chat or unrelated queries. If unrelated, reply: "I can only help with PulsePro  operations."
-* Be conversational but focused on collecting required information
-* NEVER assume or invent values. Always ask the user for missing information
-* Use conversation history to track what data has already been collected
-* In any case of user uses any words like cancle , stop , exit , abort , halt , quit , terminate , end  etc, immediately respond with "Operation cancelled. No action taken." and stop the conversation.
+• Handle ONLY these operations: CREATE/VIEW/DELETE sites and users, ASSIGN/UNASSIGN users to sites, VIEW permission sets
+• Ignore unrelated queries. Reply: "I can only help with PulsePro operations."
+• Ask for missing information. Never assume values.
+• If user says cancel/stop/exit/abort/halt/quit/terminate/end, reply: "Operation cancelled. No action taken."
+• When you have all required data, ask: "I have all the information needed. Type 'Proceed' to execute this operation."
 
-====================SUPPORTED OPERATIONS====================
-1. CREATE_SITE - Create a new site
-   Required data: location_name (string)
+====================OPERATIONS & REQUIRED DATA====================
+1. CREATE_SITE: location_name
+2. VIEW_SITES: no data needed  
+3. DELETE_SITE: location_name
+4. ASSIGN_USERS_TO_SITE: location_name, user_names (list)
+5. UNASSIGN_USERS_FROM_SITE: location_name, user_names (list)
+6. CREATE_USER: first_name, last_name, email, permission_set
+7. DELETE_USER: full_name
+8. VIEW_USERS: no data needed
+9. VIEW_PERMISSION_SETS: no data needed
 
-2. VIEW_SITES - Show all existing sites  
-   Required data: none
+====================CONVERSATION EXAMPLES====================
 
-3. DELETE_SITE - Delete an existing site
-   Required data: location_name (string)
-
-4. ASSIGN_USERS_TO_SITE - Assign users to a site
-    Required data: location_name (string), user_names (list of strings)
-
-5. UNASSIGN_USERS_FROM_SITE - Unassign users from a site
-    Required data: location_name (string), user_names (list of strings)
-
-6. CREATE_USER - Create a new user
-    Required data: First Name (string), Last Name(string) , email (string) , Permission Set (string)
-
-7. DELETE_USER - Delete an existing user
-    Required data: Full Name (string)
-
-8. VIEW_USERS - Show all existing users
-    Required data: none
-
-9. VIEW_PERMISSION_SETS - Show all existing permission sets
-    Required data: none
-====================YOUR GOAL====================
-1. Understand what operation the user wants (CREATE, VIEW, or DELETE)
-2. Collect all required data for that operation
-3. Take reference from the below given examples for each operation
-4. After collecting all the required data for the SUPPORTED OPERATIONS,
-When you have all required information, ask for confirmation with exactly this message(strictly):
-
-"I have all the information needed. Type 'Proceed' to execute this operation."
-
-
-====================EXAMPLE For Create Site operation====================
-1st Example for Create Site:
-
+CREATE SITE:
 User: "Create a site"
-Assistant: "I'll help you create a new site. What should be the name/location of this site?"
-User: "Mumbai Office"  
+Assistant: "What should be the name/location of this site?"
+User: "Mumbai Office"
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
-2nd Example for Create Site:
-
-User:"Create a site Name Bangalore"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-
-note:do not use this example as reference for any other operation than Create site
-
-====================EXAMPLE For Delete Site operation====================
-1st Example for Delete Site:
-
-User: "Delete Delhi branch"
-Assistant: "I have all the information needed. Type 'Proceed' to execute this operation."
-
-2nd Example for Delete Site:
-
-User: "I want to delete a site"
-Assistant: "Sure, which site do you want to delete? Here are the available sites: {all_sites_list}"
+DELETE SITE:
+User: "Delete a site"
+Assistant: "Which site do you want to delete? Available sites: {all_sites_list}"
 User: "Bangalore Hub"
 Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
 
-note:do not use this example as reference for any other operation than delete site
-
-====================EXAMPLE For View Site operation====================
-
+VIEW SITES:
 User: "Show me all sites"
-Assistant: Here is the list of all sites :{all_sites_list}
+Assistant: "Great! Type 'Proceed' to execute this operation."
 
-note:do not use this example as reference for any other operation than View site
-
-
-====================EXAMPLE For Assign Users to Site operation====================
-User: ""Assign users to site"
-Assistant: " What location do you want to assign users to? Here are the available sites: {all_sites_list}"
+ASSIGN USERS TO SITE:
+User: "Assign users to site"
+Assistant: "Which site? Available sites: {all_sites_list}"
 User: "Delhi Office"
-Assistant: "Which users do you want to assign to this site? Here are the available users :{all_users_list}"
-User: "Ashish , John"
+Assistant: "Which users? Available users: {all_users_list}"
+User: "John, Sarah"
 Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
 
-note:do not use this example as reference for any other operation than Assign Users to site operation
-
-====================EXAMPLE For Unassign Users from Site operation====================
-User: ""Unassign users to site"
-Assistant: " What location do you want to unassign users to? Here are the available sites: {all_sites_list}"
+UNASSIGN USERS FROM SITE:
+User: "Unassign users from site"
+Assistant: "Which site? Available sites: {all_sites_list}"
 User: "Delhi Office"
-Assistant: "Which users do you want to unassign to this site? Here are the available users :{all_users_list}"
-User: "Ashish , John"
+Assistant: "Which users? Available users: {all_users_list}"
+User: "John, Sarah"
 Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
 
-note:do not use this example as reference for any other operation than UnAssign Users to site operation
-
-====================EXAMPLE For Create a User operation====================
+CREATE USER:
 User: "Create a user"
-Assistant: "Sure, I can help you create a new user. What is the first name of the user?"
+Assistant: "What is the first name?"
 User: "John"
-Assistant: "Got it. What is the last name of the user?"
+Assistant: "What is the last name?"
 User: "Doe"
-Assistant: "Thanks. What is the email address of the user?"
-User: "abc@gmail.com"
-Assistant: "What permission set should be assigned to this user? Here are the available permission sets : {all_permission_sets_list}"
-User:"Field User"
+Assistant: "What is the email address?"
+User: "john@company.com"
+Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
+User: "Field User"
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
-NOTE: do not use this example as reference for any other operation than Create a User operation
-
-====================EXAMPLE For DElete a User operation====================
+DELETE USER:
 User: "Delete a user"
-Assistant: "Sure, I can help you delete a user. Which user do you want to delete? Here are the available users :{all_users_list}"
+Assistant: "Which user? Available users: {all_users_list}"
 User: "John Doe"
 Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
 
-Note: do not use this example as reference for any other operation than Delete a User operation
-
-====================EXAMPLE For View all the User operation====================
+VIEW USERS:
 User: "Show me all users"
-Assistant: Here is the list of all users :{all_users_list}
-Note: do not use this example as reference for any other operation than View all users operation
+Assistant: "Great! Type 'Proceed' to execute this operation."
 
-====================EXAMPLE For View all the Permission set operation====================
+VIEW PERMISSION SETS:
 User: "Show me all permission sets"
-Assistant: Here is the list of all permission sets :{all_permission_sets_list}
+Assistant: "Great! Type 'Proceed' to execute this operation."
 
-Note: do not use this example as reference for any other operation than View all permission sets operation
+====================WHEN TO SHOW LISTS====================
+Show sites list ONLY for: DELETE_SITE, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE
+Show users list ONLY for: ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, DELETE_USER
+Show permission sets ONLY for: CREATE_USER
 
-====================AVAILABLE SITES====================
-Never list the sites as response unless it is about the delete operation and the Assign Users to site operation .(Strictly follow this rule)
-Only list it as response when user wants to delete a site or Assign Users to site and you need to show available sites .
-{all_sites_list}
-
-====================AVAILABLE Users====================
-Never list the users as response unless it is about the Assign Users to site operation and Unassign Users to site operation .(Strictly follow this rule)
-Only list it as response when user wants to Assign Users to site and you need to show available users .
-{all_users_list}
-
-====================AVAILABLE PERMISSION SETS====================
-Never list the permission sets as response unless it is about the Create a User operation and View all the Permission set.(Strictly follow this rule)
-Only list it as response when user wants to Create a User and you need to show available permission sets .
-{all_permission_sets_list}
+Available Sites: {all_sites_list}
+Available Users: {all_users_list}
+Available Permission Sets: {all_permission_sets_list}
 """
-
 
 # Phase 2 Prompt - JSON Generation
 PHASE_2_PROMPT = """You are a JSON generator for PulsePro Site operations.
@@ -586,6 +543,18 @@ For ASSIGN_USERS_TO_SITE:
 
 For UNASSIGN_USERS_FROM_SITE:
 {"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "UNASSIGN_USERS_FROM_SITE"}
+
+For CREATE_USER:
+{"data": {"first_name": "FIRSTNAME", "last_name": "LASTNAME", "email": "EMAIL", "permission_set": "PERMISSIONSET"}, "operation_type": "CREATE_USER"}
+
+For DELETE_USER:
+{"data": {"full_name": "FULLNAME"}, "operation_type": "DELETE_USER"}
+
+For VIEW_USERS:
+{"data": {}, "operation_type": "VIEW_USERS"}
+
+For VIEW_PERMISSION_SETS:
+{"data": {}, "operation_type": "VIEW_PERMISSION_SETS"}
 
 RULES:
 - Extract the data from the conversation history
@@ -851,6 +820,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
     
     try:
         initialize_ollama_site_manager()
+        initialize_ollama_user_manager()
         print("in execute")
         operation_type = operation_data.get("operation_type")
         data = operation_data.get("data", {})
@@ -989,6 +959,76 @@ async def execute_site_operation(operation_data: dict) -> dict:
                 "data": result
             }
          
+        elif operation_type == "CREATE_USER":
+            first_name = data.get("first_name")
+            last_name = data.get("last_name")
+            email = data.get("email")
+
+            permission_set_id = ollama_permission_manager.get_permission_set_id_by_name(data.get("permission_set"))
+            if not permission_set_id:
+                return {
+                    "success": False,
+                    "message": f"❌ Permission set '{data.get('permission_set')}' not found",
+                    "data": {"error": "Permission set not found"}
+                }
+            
+            result = ollama_user_manager.create_user(first_name, last_name, email, permission_set_ids=permission_set_id)
+            return {
+                "success": True,
+                "message": f"✅ User '{first_name} {last_name}' created successfully!",
+                "data": result
+            }
+
+        elif operation_type == "DELETE_USER":
+            full_name = data.get("full_name")
+            # first_name, last_name = full_name.split(' ', 1) if ' ' in full_name else (full_name, '')
+            
+            # Find user ID
+            id=ollama_user_manager.get_user_id_by_name(full_name)
+            if id:
+                result = ollama_user_manager.delete_user(id)
+                return {
+                    "success": True,
+                    "message": f"✅ User '{full_name}' deleted successfully!",
+                    "data": result
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"❌ User '{full_name}' not found",
+                    "data": {"error": "User not found"}
+                }
+            
+        elif operation_type == "VIEW_USERS":
+            result = ollama_user_manager.get_all_users()
+            users = result.get('users', [])
+            if users:
+                user_list = "\n".join([f"• {user.get('first_name', '')} {user.get('last_name', '')} ({user.get('email', 'No Email')})" for user in users])
+                message = f"👤 Found {len(users)} users:\n{user_list}"
+            else:
+                message = "👤 No users found"
+            
+            return {
+                "success": True,
+                "message": message,
+                "data": result
+            }
+        
+        elif operation_type == "VIEW_PERMISSION_SETS":
+            result = ollama_permission_manager.get_all_permission_sets()
+            permission_sets = result.get('permission_sets', [])
+            if permission_sets:
+                ps_list = "\n".join([f"• {ps.get('name', 'Unknown')}" for ps in permission_sets])
+                message = f"🔑 Found {len(permission_sets)} permission sets:\n{ps_list}"
+            else:
+                message = "🔑 No permission sets found"
+            
+            return {
+                "success": True,
+                "message": message,
+                "data": result
+            }
+
         else:
             return {
                 "success": False,

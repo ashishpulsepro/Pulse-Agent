@@ -395,6 +395,14 @@ class PermissionManager:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get permission sets: {e}")
             raise PulseProAPIException(f"Failed to retrieve permission sets: {e}")
+        
+    def get_permission_set_id_by_name(self, name: str) -> Optional[int]:
+        """Get permission set ID by name"""
+        permission_sets = self.get_all_permission_sets()
+        for perm in permission_sets:
+            if perm['name'].lower() == name.lower():
+                return perm['id']
+        return None
 
 
 
@@ -435,7 +443,7 @@ class UserManager:
             return response.json()
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to create user '{name}': {e}")
+            logger.error(f"Failed to create user '{first_name}': {e}")
             raise PulseProAPIException(f"User creation failed: {e}")
     
     def delete_user(self, user_id: int) -> Dict[str, Any]:
@@ -472,8 +480,21 @@ class UserManager:
         if response.status_code == 200:
             data = response.json()
             team = data.get("myTeam", [])
-            names = [member.get("member_name") for member in team]
-            return names
+            
+            users=[{
+                'id':user.get("id"),
+                'name':user.get("member_name"),
+            } for user in team]
+
+            return users
         else:
             print("Error:", response.status_code, response.text)
             return None
+        
+    def get_user_id_by_name(self, name: str) -> Optional[int]:
+        """Get user ID by name"""
+        users = self.get_all_users()
+        for user in users:
+            if user['name'].lower() == name.lower():
+                return user['id']
+        return None
