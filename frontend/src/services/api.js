@@ -70,6 +70,102 @@ class ApiService {
   async getSystemStatus() {
     return this.request("/status");
   }
+
+  // Onboarding methods
+  async startOnboarding(sessionId = null) {
+    return this.request("/onboarding/start", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId,
+      }),
+    });
+  }
+
+  async sendOnboardingMessage(message, sessionId) {
+    return this.request("/onboarding/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        message,
+        session_id: sessionId,
+      }),
+    });
+  }
+
+  async getOnboardingStatus(sessionId) {
+    return this.request(`/onboarding/status/${sessionId}`);
+  }
+
+  async clearOnboardingSession(sessionId) {
+    return this.request(`/onboarding/session/${sessionId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async clearAllOnboardingSessions() {
+    return this.request("/onboarding/sessions", {
+      method: "DELETE",
+    });
+  }
+
+  // Unified chat method (supports both normal and onboarding modes)
+  async sendUnifiedMessage(message, sessionId = null, mode = "normal") {
+    return this.request("/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        message,
+        session_id: sessionId,
+        mode: mode,
+      }),
+    });
+  }
+
+  // Site management methods
+  async getAllSites() {
+    return this.request("/sites");
+  }
+
+  async createSite(siteData) {
+    return this.request("/sites", {
+      method: "POST",
+      body: JSON.stringify(siteData),
+    });
+  }
+
+  async createSimpleSite(locationName) {
+    return this.request("/sites/simple", {
+      method: "POST",
+      body: JSON.stringify({ location_name: locationName }),
+    });
+  }
+
+  async deleteSite(siteId) {
+    return this.request(`/sites/${siteId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // User management methods
+  async getPermissionBundles() {
+    return this.request("/users/permissions");
+  }
+
+  async createUser(userData) {
+    return this.request("/users", {
+      method: "POST",
+      body: JSON.stringify(userData),
+    });
+  }
+
+  // Session management
+  async getAllSessions() {
+    return this.request("/sessions");
+  }
+
+  async clearAllSessions() {
+    return this.request("/sessions", {
+      method: "DELETE",
+    });
+  }
 }
 
 // Export singleton instance
