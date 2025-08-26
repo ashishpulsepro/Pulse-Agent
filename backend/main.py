@@ -360,104 +360,28 @@ CONVERSATION HISTORY:
 
 VALID INTENTS:
 CREATE_SITE, DELETE_SITE, VIEW_SITES, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, CREATE_USER, DELETE_USER, VIEW_USERS, VIEW_PERMISSION_SETS, ASSIGN_PERMISSION_SET_TO_USER, UNASSIGN_PERMISSION_SET_FROM_USER, UNKNOWN
-# INTENT CLASSIFICATION RULES
 
-Analyze the user's message and classify it into ONE of the following intents. Use the keywords and context patterns to make accurate classifications.
+INTENTS:
 
-## PERMISSION MANAGEMENT (Check First - Most Specific)
+- VIEW_PERMISSION_SETS: show/list/see permissions/roles/access
+- ASSIGN_PERMISSION_SET_TO_USER: give/assign permissions/roles/access to user/employee
+- UNASSIGN_PERMISSION_SET_FROM_USER: remove/take permissions/roles/access from user/employee
+- CREATE_SITE: create/add/make/new/open site/office/location/branch
+- DELETE_SITE: delete/remove/close site/office/location/branch
+- VIEW_SITES: show/list/see/get all sites/offices/locations/branches
+- ASSIGN_USERS_TO_SITE: assign/add/move user/employee to site/office/location
+- UNASSIGN_USERS_FROM_SITE: remove/take user/employee from site/office/location
+- CREATE_USER: create/add/make/new user/employee/account/person
+- DELETE_USER: delete/remove user/employee/account/person
+- VIEW_USERS: show/list/see/get all users/employees/accounts/people
+- UNKNOWN: hello/hi/chat/help/other topics
 
-**ASSIGN_PERMISSION_SET_TO_USER**
-- Keywords: assign, give, grant, provide, set, add
-- Objects: permissions, permission sets, roles, access rights, privileges, admin, manager, viewer
-- Pattern: permission/role/access + to + user/person/employee
-- Examples: "assign admin role to John", "give permissions to user", "grant access to employee", "assign permissions to user"
-
-**UNASSIGN_PERMISSION_SET_FROM_USER**
-- Keywords: unassign, remove, revoke, take away, strip, withdraw
-- Objects: permissions, permission sets, roles, access rights, privileges, admin, manager, viewer
-- Pattern: permission/role/access + from + user/person/employee  
-- Examples: "remove admin access from user", "revoke permissions", "unassign role from employee"
-
-**VIEW_PERMISSION_SETS**
-- Keywords: show, view, list, display, see, get, what are, available
-- Objects: permissions, permission sets, roles, access rights, privileges
-- Examples: "show permissions", "list permission sets", "what roles are available", "view access rights"
-
-## USER-SITE ASSIGNMENT
-
-**ASSIGN_USERS_TO_SITE**
-- Keywords: assign, add, attach, link, connect, move, transfer
-- Objects: user, employee, person, staff + site, location, office, branch, facility
-- Pattern: user/employee/person + to/at + site/location/office/branch (NOT permissions)
-- Exclusion: Does NOT contain permission-related words
-- Examples: "assign John to Mumbai office", "add users to site", "move employee to branch"
-
-**UNASSIGN_USERS_FROM_SITE**
-- Keywords: unassign, remove, detach, unlink, disconnect, transfer away
-- Objects: user, employee, person, staff + site, location, office, branch, facility
-- Pattern: user/employee/person + from + site/location/office/branch (NOT permissions)
-- Examples: "remove user from office", "unassign employee from site", "detach from location"
-
-## SITE/LOCATION MANAGEMENT
-
-**CREATE_SITE**
-- Keywords: create, add, new, establish, set up, register, open
-- Objects: site, location, office, branch, facility, workplace, center
-- Examples: "create a new office", "add location", "set up branch", "establish new site"
-
-**DELETE_SITE**  
-- Keywords: delete, remove, close, shut down, eliminate, deactivate, disable
-- Objects: site, location, office, branch, facility
-- Examples: "delete the Mumbai office", "remove location", "close branch", "shut down site"
-
-**VIEW_SITES**
-- Keywords: show, view, list, display, see, get, fetch, find, search
-- Objects: sites, locations, offices, branches, facilities (plural forms)
-- Examples: "show all locations", "list offices", "view sites", "display branches"
-
-## USER MANAGEMENT
-
-**CREATE_USER**
-- Keywords: create, add, new, register, onboard, hire
-- Objects: user, account, employee, person, staff, member
-- Examples: "create new user", "add employee", "register account", "onboard staff member"
-
-**DELETE_USER**
-- Keywords: delete, remove, deactivate, disable, terminate, offboard
-- Objects: user, account, employee, person, staff
-- Examples: "delete user account", "remove employee", "deactivate user", "terminate staff"
-
-**VIEW_USERS**
-- Keywords: show, view, list, display, see, get, fetch, find, search
-- Objects: users, accounts, employees, staff, members (plural forms)
-- Examples: "show all users", "list employees", "view user accounts", "display staff"
-
-## DEFAULT CLASSIFICATION
-
-**UNKNOWN**
-- Apply when the message doesn't clearly match any specific intent
-- Includes: greetings, casual conversation, unclear requests, unrelated topics
-- Examples: "hello", "how are you?", "what's the weather?", "I need help with something"
-
----
-
-## CLASSIFICATION GUIDELINES
-
-1. **Check Permission Management first** - these are the most specific patterns
-2. **Look for permission-related keywords** (permissions, roles, access, admin, manager, viewer)
-3. **Distinguish between user-to-site vs permission-to-user assignments**:
-   - "assign user TO site" = ASSIGN_USERS_TO_SITE
-   - "assign permissions TO user" = ASSIGN_PERMISSION_SET_TO_USER
-4. **Prioritize object identification**:
-   - If message contains permission/role/access words → Permission Management
-   - If message contains site/location/office words → Site Management or User-Site Assignment
-5. **Consider context and sentence structure**, not just individual words
-6. **Look for action verbs** combined with relevant objects
-7. **Distinguish between singular and plural** (create user vs. view users)
-8. **When in doubt**, classify as UNKNOWN rather than guessing
-9. **Handle variations** in terminology (office = site = location = branch)
-10. **Consider implicit requests** ("John needs admin access" = ASSIGN_PERMISSION_SET_TO_USER)
-
+RULES:
+1. If message contains "permission/role/access" + "assign/give" → ASSIGN_PERMISSION_SET_TO_USER
+2. If message contains "permission/role/access" + "remove/revoke" → UNASSIGN_PERMISSION_SET_FROM_USER
+3. If message contains "user" + "to" + "site/office" → ASSIGN_USERS_TO_SITE
+4. Look for key action words: create, delete, view, assign, remove
+5. If unsure, return UNKNOWN
 CRITICAL: Return ONLY the intent name (e.g., "CREATE_SITE" or "UNKNOWN"). No explanations, no other text.
 """
 
@@ -467,11 +391,12 @@ CRITICAL: Return ONLY the intent name (e.g., "CREATE_SITE" or "UNKNOWN"). No exp
             model="llama3.1:8b",
             prompt=intent_prompt,
             options={
-                "num_predict": 10,  # Sufficient for intent name
-                "temperature": 0.1,  # Maximum determinism
+                "num_predict": 17,  # Sufficient for intent name
+                "temperature": 0.0,  # Maximum determinism
                 "top_p": 0.05,      # Very focused responses
                 "top_k": 10,        # Limit vocabulary
-                "stop": ["\n", ".", ",", " ", ":", ";"]  # Stop at first word
+                "stop": ["\n", ".", ",", " ", ":", ";"],
+                "repeat_penalty": 1.0   # Stop at first word
             }
         )
         
