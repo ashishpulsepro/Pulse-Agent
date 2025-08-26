@@ -258,10 +258,20 @@ class SiteManager:
         
         try:
             response = requests.get(url, headers=headers)
-            response.raise_for_status()
             
-            logger.info(f"Site ID {location_id} deleted successfully")
-            return response.json()
+
+            if response.status_code == 200:
+                logger.info(f"Site ID {location_id} deleted successfully")
+                return {"success": True, "message": "Site deleted successfully"}
+            
+            elif response.status_code == 400:
+                return {
+                "success": False,
+                "message": response.json().get("message", "Failed to delete site"),
+                }
+            else:
+                response.raise_for_status()
+            
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to delete site {location_id}: {e}")
@@ -404,6 +414,53 @@ class PermissionManager:
             if perm['name'].lower() == name.lower():
                 return perm['id']
         return None
+    
+    def assign_permission_sets_to_user(self, user_id: int, permission_set_ids: List[int]) -> Dict[str, Any]:
+        """Assign multiple permission sets to a user"""
+        url = f"{self.base_url}/customer/assign_permission_set_to_user/"
+        headers = self._get_headers()
+        print("permission set ids: ", permission_set_ids)
+        print("user id: ", user_id)
+        
+        
+        payload = {
+            "user_id": [user_id],
+            "permission_set_id": permission_set_ids
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            logger.info(f"Assigned {len(permission_set_ids)} permission sets to user ID {user_id}")
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to assign permission sets to user {user_id}: {e}")
+            raise PulseProAPIException(f"Permission set assignment failed: {e}")
+        
+    def unassign_permission_sets_from_user(self, user_id: int, permission_set_ids: List[int]) -> Dict[str, Any]:
+        """Unassign multiple permission sets from a user"""
+        url = f"{self.base_url}/customer/remove_permission_set_from_user/"
+        headers = self._get_headers()
+        print("permission set ids: ", permission_set_ids)
+        print("user id: ", user_id) 
+        
+        payload = {
+            "user_id": [user_id],
+            "permission_set_id": permission_set_ids
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            logger.info(f"Unassigned {len(permission_set_ids)} permission sets from user ID {user_id}")
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to unassign permission sets from user {user_id}: {e}")
+            raise PulseProAPIException(f"Permission set unassignment failed: {e}")
 
 
 
@@ -498,4 +555,12 @@ class UserManager:
         for user in users:
             if user['name'].lower() == name.lower():
                 return user['id']
+        return None
+    
+    def get_user_by_name(self, name: str) -> Optional[int]:
+        """Get user ID by name"""
+        users = self.get_all_users()
+        for user in users:
+            if user['name'].lower() == name.lower():
+                return user['user']
         return None

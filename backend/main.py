@@ -27,6 +27,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="User message")
     session_id: Optional[str] = Field(None, description="Session ID for conversation continuity")
     user_id: Optional[str] = Field(None, description="User ID")
+    session_intent: Optional[str] = Field(None, description="Detected intent for the session")
 
 class ChatResponse(BaseModel):
     message: str
@@ -34,6 +35,7 @@ class ChatResponse(BaseModel):
     session_id: str
     context: Optional[Dict[str, Any]] = None
     data: Optional[Dict[str, Any]] = None
+    session_intent: Optional[str] = None
 
 # Global variables
 ollama_site_manager = None
@@ -134,135 +136,6 @@ def initialize_ollama_user_manager():
         ollama_user_manager = None
         return False
 
-# Test Ollama connection endpoint
-@app.get("/ollama/test", response_model=StandardResponse)
-async def test_ollama_connection():
-    """Test Ollama connection and model availability"""
-    try:
-        import ollama
-        
-        # Try to create client with explicit host (adjust if needed)
-        client = ollama.Client(host='http://localhost:11434')
-        
-        # Test basic connection first
-        try:
-            models = client.list()
-            
-            # Handle the models response properly
-            available_models = []
-            if hasattr(models, 'models'):
-                # Handle case where models is an object with models attribute
-                model_list = models.models
-            elif isinstance(models, dict) and 'models' in models:
-                # Handle case where models is a dict with models key
-                model_list = models['models']
-            else:
-                # Handle other cases
-                model_list = models if isinstance(models, list) else [models]
-            
-            # Extract model names
-            for model in model_list:
-                if hasattr(model, 'model'):
-                    # Handle model objects with model attribute
-                    available_models.append(model.model)
-                elif hasattr(model, 'name'):
-                    # Handle model objects with name attribute
-                    available_models.append(model.name)
-                elif isinstance(model, dict):
-                    # Handle dict models
-                    name = model.get('model') or model.get('name') or model.get('id')
-                    if name:
-                        available_models.append(name)
-                else:
-                    # Fallback to string representation
-                    available_models.append(str(model))
-        except Exception as list_error:
-            return StandardResponse(
-                success=False,
-                message="Failed to list models from Ollama",
-                data={
-                    "error": str(list_error),
-                    "suggestions": [
-                        "Check if Ollama is running: ollama serve",
-                        "Verify Ollama is accessible at http://localhost:11434",
-                        "Try: curl http://localhost:11434/api/tags"
-                    ]
-                }
-            )
-        
-        # Test llama3.1:8b specifically
-        model_available = "llama3.1:8b" in available_models
-        
-        if model_available:
-            try:
-                # Test generation with timeout
-                response = client.generate(
-                    model="llama3.1:8b",
-                    prompt="who was the first president of the united states?",
-                    options={"num_predict": 500}
-                )
-
-                print(f"Test response: {response['response']}")
-                
-                return StandardResponse(
-                    success=True,
-                    message="Ollama connection successful",
-                    data={
-                        "available_models": available_models,
-                        "target_model": "llama3.1:8b",
-                        "model_status": "available",
-                        "test_response": response['response']
-                    }
-                )
-            except Exception as gen_error:
-                return StandardResponse(
-                    success=False,
-                    message="Model found but generation failed",
-                    data={
-                        "available_models": available_models,
-                        "target_model": "llama3.1:8b",
-                        "model_status": "available_but_failed",
-                        "error": str(gen_error),
-                        "suggestion": "Model may be corrupted, try: ollama pull llama3.1:8b"
-                    }
-                )
-        else:
-            return StandardResponse(
-                success=False,
-                message="llama3.1:8b model not found",
-                data={
-                    "available_models": available_models,
-                    "target_model": "llama3.1:8b",
-                    "model_status": "not_found",
-                    "suggestion": "Run: ollama pull llama3.1:8b"
-                }
-            )
-            
-    except ImportError:
-        return StandardResponse(
-            success=False,
-            message="Ollama Python package not installed",
-            data={
-                "error": "ImportError: ollama module not found",
-                "suggestion": "Install with: pip install ollama"
-            }
-        )
-    except Exception as e:
-        return StandardResponse(
-            success=False,
-            message="Ollama connection failed",
-            data={
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "suggestions": [
-                    "Make sure Ollama is running: ollama serve",
-                    "Check if port 11434 is accessible",
-                    "Verify Ollama installation: ollama --version",
-                    "Try manual test: curl http://localhost:11434/api/tags"
-                ]
-            }
-        )
-
 
 
 
@@ -306,115 +179,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# SITE_PROMPT = """You are PulsePro AI Assistant for Site Management.
-
-# ====================CORE RULES====================
-# * Handle ONLY PulsePro Site operations.
-# * STRICTLY ignore chit-chat or unrelated queries. If query is unrelated, reply with: "I can only help with PulsePro Site operations."
-# * Be systematic, precise, and strict.
-# * NEVER assume or invent values. If a required value is missing, always explicitly ask the user for it.
-# * Use the conversation history provided in the context to track collected fields. Do not forget previous user responses.
-
-# ====================WORKFLOW====================
-# 1. INTENT DETECTION
-# * Detect which operation the user wants.
-# * If unclear, ask the user to clarify.
-# * Valid operations: CREATE_SITE, DELETE_SITE, VIEW_SITES, UPDATE_SITE
-
-# 2. REQUIRED FIELDS COLLECTION
-# * Each operation has REQUIRED_FIELDS.
-# * Ask for ONLY ONE missing field at a time.
-# * Do not continue until the user provides the missing field.
-# * Do NOT create defaults for required fields.
-# * If a value is already provided in conversation history, reuse it instead of asking again.
-
-# REQUIRED_FIELDS:
-# * CREATE_SITE: location_name (string)
-# * DELETE_SITE: location_name (string)
-# * VIEW_SITES: (no fields required)
-# * UPDATE_SITE: location_name (string), field_to_update (string), new_value (string)
-
-# 3. EXECUTION READINESS
-# * When all required fields are collected, your response MUST BE ONLY the following format (no explanations, no extra text):
-
-# For CREATE_SITE:
-# READY_FOR_EXECUTION [location_name: VALUE]
-# Should I proceed with creating this site? (yes/no)
-
-# For DELETE_SITE:
-# READY_FOR_EXECUTION [location_name: VALUE]
-# Should I proceed with deleting this site? (yes/no)
-
-# For VIEW_SITES:
-# READY_FOR_EXECUTION
-# Should I proceed with showing all sites? (yes/no)
-
-# For UPDATE_SITE:
-# READY_FOR_EXECUTION [location_name: VALUE1, field_to_update: VALUE2, new_value: VALUE3]
-# Should I proceed with updating this site? (yes/no)
-
-# 4. USER DECISION
-# * If user replies "yes", respond ONLY with the appropriate JSON:
-
-# For CREATE_SITE:
-# { "operation": "CREATE_SITE", "data": { "location_name": "VALUE" }}
-
-# For DELETE_SITE:
-# { "operation": "DELETE_SITE", "data": { "location_name": "VALUE" }}
-
-# For VIEW_SITES:
-# { "operation": "VIEW_SITES", "data": {} }
-
-# For UPDATE_SITE:
-# { "operation": "UPDATE_SITE", "data": { "location_name": "VALUE1", "field_to_update": "VALUE2", "new_value": "VALUE3" }}
-
-# * If user replies "no":
-# Operation cancelled. No action taken.
-
-# ====================EXAMPLES====================
-
-# Example 1 - CREATE:
-# User: "Create a site in Delhi"
-# Assistant: READY_FOR_EXECUTION [location_name: Delhi]
-# Should I proceed with creating this site? (yes/no)
-
-# User: "yes"
-# Assistant: { "operation": "CREATE_SITE", "data": { "location_name": "Delhi" }}
-
-# Example 2 - DELETE:
-# User: "Delete Mumbai office"
-# Assistant: READY_FOR_EXECUTION [location_name: Mumbai office]
-# Should I proceed with deleting this site? (yes/no)
-
-# User: "yes"
-# Assistant: { "operation": "DELETE_SITE", "data": { "location_name": "Mumbai office" }}
-
-# Example 3 - VIEW:
-# User: "Show me all sites"
-# Assistant: READY_FOR_EXECUTION
-# Should I proceed with showing all sites? (yes/no)
-
-# User: "yes"
-# Assistant: { "operation": "VIEW_SITES", "data": {} }
-
-# Example 4 - UPDATE:
-# User: "Update Delhi site"
-# Assistant: What field do you want to update?
-
-# User: "address"
-# Assistant: What is the new address value?
-
-# User: "New Delhi, India"
-# Assistant: READY_FOR_EXECUTION [location_name: Delhi site, field_to_update: address, new_value: New Delhi, India]
-# Should I proceed with updating this site? (yes/no)
-
-# User: "yes"
-# Assistant: { "operation": "UPDATE_SITE", "data": { "location_name": "Delhi site", "field_to_update": "address", "new_value": "New Delhi, India" }}
-
-# Example 5 - CANCEL:
-# User: "no"
-# Assistant: Operation cancelled. No action taken.
-# """
 
 # Simple session storage
 chat_sessions = {}
@@ -433,137 +197,7 @@ client_mongo = MongoClient(MONGO_URI)
 db = client_mongo.Conversations
 conversations_collection = db.conversations
 
-# Phase 1 Prompt - Intent Detection and Data Collection
-PHASE_1_PROMPT = """You are PulsePro AI Assistant.
 
-====================CORE RULES====================
-• Handle ONLY these operations: CREATE/VIEW/DELETE sites and users, ASSIGN/UNASSIGN users to sites, VIEW permission sets
-• Ignore unrelated queries. Reply: "I can only help with PulsePro operations."
-• Ask for missing information. Never assume values.
-• If user says cancel/stop/exit/abort/halt/quit/terminate/end, reply: "Operation cancelled. No action taken."
-• When you have all required data, ask: "I have all the information needed. Type 'Proceed' to execute this operation."
-
-====================OPERATIONS & REQUIRED DATA====================
-1. CREATE_SITE: location_name
-2. VIEW_SITES: no data needed  
-3. DELETE_SITE: location_name
-4. ASSIGN_USERS_TO_SITE: location_name, user_names (list)
-5. UNASSIGN_USERS_FROM_SITE: location_name, user_names (list)
-6. CREATE_USER: first_name, last_name, email, permission_set
-7. DELETE_USER: full_name
-8. VIEW_USERS: no data needed
-9. VIEW_PERMISSION_SETS: no data needed
-
-====================CONVERSATION EXAMPLES====================
-
-CREATE SITE:
-User: "Create a site"
-Assistant: "What should be the name/location of this site?"
-User: "Mumbai Office"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-
-DELETE SITE:
-User: "Delete a site"
-Assistant: "Which site do you want to delete? Available sites: {all_sites_list}"
-User: "Bangalore Hub"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-VIEW SITES:
-User: "Show me all sites"
-Assistant: "Great! Type 'Proceed' to execute this operation."
-
-ASSIGN USERS TO SITE:
-User: "Assign users to site"
-Assistant: "Which site? Available sites: {all_sites_list}"
-User: "Delhi Office"
-Assistant: "Which users? Available users: {all_users_list}"
-User: "John, Sarah"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-UNASSIGN USERS FROM SITE:
-User: "Unassign users from site"
-Assistant: "Which site? Available sites: {all_sites_list}"
-User: "Delhi Office"
-Assistant: "Which users? Available users: {all_users_list}"
-User: "John, Sarah"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-CREATE USER:
-User: "Create a user"
-Assistant: "What is the first name?"
-User: "John"
-Assistant: "What is the last name?"
-User: "Doe"
-Assistant: "What is the email address?"
-User: "john@company.com"
-Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
-User: "Field User"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-
-DELETE USER:
-User: "Delete a user"
-Assistant: "Which user? Available users: {all_users_list}"
-User: "John Doe"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-VIEW USERS:
-User: "Show me all users"
-Assistant: "Great! Type 'Proceed' to execute this operation."
-
-VIEW PERMISSION SETS:
-User: "Show me all permission sets"
-Assistant: "Great! Type 'Proceed' to execute this operation."
-
-====================WHEN TO SHOW LISTS====================
-Show sites list ONLY for: DELETE_SITE, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE
-Show users list ONLY for: ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, DELETE_USER
-Show permission sets ONLY for: CREATE_USER
-
-Available Sites: {all_sites_list}
-Available Users: {all_users_list}
-Available Permission Sets: {all_permission_sets_list}
-"""
-
-# Phase 2 Prompt - JSON Generation
-PHASE_2_PROMPT = """You are a JSON generator for PulsePro Site operations.
-
-ANALYZE the conversation history and generate ONLY a JSON response in this EXACT format:
-
-For CREATE_SITE:
-{"data": {"location_name": "EXTRACTED_NAME"}, "operation_type": "CREATE_SITE"}
-
-For VIEW_SITES:
-{"data": {}, "operation_type": "VIEW_SITES"}
-
-For DELETE_SITE:
-{"data": {"location_name": "EXTRACTED_NAME"}, "operation_type": "DELETE_SITE"}
-
-For ASSIGN_USERS_TO_SITE:
-{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "ASSIGN_USERS_TO_SITE"}
-
-For UNASSIGN_USERS_FROM_SITE:
-{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "UNASSIGN_USERS_FROM_SITE"}
-
-For CREATE_USER:
-{"data": {"first_name": "FIRSTNAME", "last_name": "LASTNAME", "email": "EMAIL", "permission_set": "PERMISSIONSET"}, "operation_type": "CREATE_USER"}
-
-For DELETE_USER:
-{"data": {"full_name": "FULLNAME"}, "operation_type": "DELETE_USER"}
-
-For VIEW_USERS:
-{"data": {}, "operation_type": "VIEW_USERS"}
-
-For VIEW_PERMISSION_SETS:
-{"data": {}, "operation_type": "VIEW_PERMISSION_SETS"}
-
-RULES:
-- Extract the data from the conversation history
-- Return ONLY the JSON object, nothing else
-- No explanations, no text, no markdown, just pure JSON
-- Use the exact operation_type names shown above
-- Strictly follow the JSON format shown above , including field names and structure
-
-"""
 
 # Simple session storage (keeping for backward compatibility)
 chat_sessions = {}
@@ -598,11 +232,54 @@ def clear_conversation_from_db(session_id: str):
     except Exception as e:
         logger.error(f"Failed to clear from MongoDB: {e}")
 
+def get_session_intent(session_id):
+    """Get the intent for a session from MongoDB"""
+    try:
+        session = conversations_collection.find_one(
+            {"session_id": session_id, "role": "assistant", "key": "intent"}
+        )
+        return session['intent'] if session else None
+    except Exception as e:
+        logger.error(f"Failed to get intent from MongoDB: {e}")
+        return None
+
+
+def store_session_intent(session_id, session_intent):
+    """Update the intent for a session (only if it already exists)"""
+    try:
+        # Update assistant intent if it exists
+        result_assistant = conversations_collection.update_one(
+            {"session_id": session_id, "role": "assistant", "key": "intent"},
+            {"$set": {"intent": session_intent, "timestamp": datetime.utcnow()}},
+            upsert=False  # do NOT create new
+        )
+
+        # Update user intent if it exists
+        result_user = conversations_collection.update_one(
+            {"session_id": session_id, "role": "user", "key": "intent"},
+            {"$set": {"intent": session_intent, "timestamp": datetime.utcnow()}},
+            upsert=False
+        )
+
+        if result_assistant.matched_count == 0 and result_user.matched_count == 0:
+            logger.warning(f"No existing intent docs found for session {session_id}, nothing updated")
+            return False
+
+        logger.info(f"Intent '{session_intent}' updated for session {session_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to update intent in MongoDB: {e}")
+        return False
+
+        
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_agent(chat_request: ChatRequest):
     """Two-phase chat agent: Phase 1 (Chat) → Phase 2 (Execute)"""
     
     session_id = chat_request.session_id or str(uuid.uuid4())
+    intent = get_session_intent(session_id) or "UNKNOWN"
     user_message = chat_request.message.strip()
     
     try:
@@ -614,6 +291,11 @@ async def chat_with_agent(chat_request: ChatRequest):
         
         # Add user message to conversation and save to MongoDB
         save_conversation_to_db(session_id, "user", user_message)
+
+        if intent == 'UNKNOWN':
+            intent = await execute_phase_0(session_id, user_message, client)
+            store_session_intent(session_id, intent)
+            print(f"Intent after phase 0: {intent}")
         
         # Check if user wants to execute (Phase 2)
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end"]
@@ -629,10 +311,11 @@ async def chat_with_agent(chat_request: ChatRequest):
         
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
         if user_message.lower().strip() in execution_triggers:
-            return await execute_phase_2(session_id, client)
+            return await execute_phase_2(session_id, client,intent)
         
         # Phase 1: Continue conversation
-        return await execute_phase_1(session_id, user_message, client)
+        print("Proceeding to Phase 1 chat...")
+        return await execute_phase_1(session_id, user_message, client,intent)
         
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -646,50 +329,111 @@ async def chat_with_agent(chat_request: ChatRequest):
 
 
 # Function to get formatted site list
-def get_sites_list_formatted():
-    """Get all sites and format them as a string"""
-    initialize_ollama_site_manager()
+
+
+async def execute_phase_0(session_id: str, user_message: str, client) -> str:
+    """Phase 0: Optimized Intent detection - returns only the intent string"""
+
+    # Get conversation history from MongoDB (optimized - only recent messages)
+    db_messages = get_conversation_from_db(session_id)
+    conversation_history = "\n".join([
+        f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['message']}"
+        for msg in db_messages[-5:]  # Only last 5 messages for efficiency
+    ])
+    
+    # Valid intents list
+    valid_intents = [
+        "CREATE_SITE", "DELETE_SITE", "VIEW_SITES", 
+        "ASSIGN_USERS_TO_SITE", "UNASSIGN_USERS_FROM_SITE", 
+        "CREATE_USER", "DELETE_USER", "VIEW_USERS", 
+        "VIEW_PERMISSION_SETS", "ASSIGN_PERMISSION_SET_TO_USER", 
+        "UNASSIGN_PERMISSION_SET_FROM_USER"
+    ]
+    
+    # Improved intent detection prompt
+    intent_prompt = f"""You are a PulsePro intent classifier.
+
+ANALYZE the user message and conversation history to determine the user's intent.
+
+USER MESSAGE: "{user_message}"
+
+CONVERSATION HISTORY:
+{conversation_history}
+
+VALID INTENTS:
+CREATE_SITE, DELETE_SITE, VIEW_SITES, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, CREATE_USER, DELETE_USER, VIEW_USERS, VIEW_PERMISSION_SETS, ASSIGN_PERMISSION_SET_TO_USER, UNASSIGN_PERMISSION_SET_FROM_USER, UNKNOWN
+
+INTENT CLASSIFICATION RULES:
+- "create site/location/office/branch" → CREATE_SITE
+- "delete/remove site/location/office" → DELETE_SITE  
+- "show/view/list/display sites/locations" → VIEW_SITES
+- "assign user(s) to site/location" → ASSIGN_USERS_TO_SITE
+- "unassign/remove user(s) from site" → UNASSIGN_USERS_FROM_SITE
+- "create/add new user/account/employee" → CREATE_USER
+- "delete/remove user/account/employee" → DELETE_USER
+- "show/view/list/display users/accounts" → VIEW_USERS
+- "show/view/list permissions/permission sets" → VIEW_PERMISSION_SETS
+- "assign/give permission(s) to user" → ASSIGN_PERMISSION_SET_TO_USER
+- "unassign/remove permission(s) from user" → UNASSIGN_PERMISSION_SET_FROM_USER
+- Greetings, unrelated topics, unclear requests → UNKNOWN
+
+CRITICAL: Return ONLY the intent name (e.g., "CREATE_SITE" or "UNKNOWN"). No explanations, no other text.
+"""
+
     try:
-        if ollama_site_manager:
-            result = ollama_site_manager.get_all_sites()
-            sites = result.get('locations', [])
-            if sites:
-                # Format as numbered list
-                sites_list = "\n".join([f"{i+1}. {site.get('location_name', 'Unknown'),{site.get('city')}, {site.get('state')}}" 
-                                      for i, site in enumerate(sites)])
-                return f"Current sites:\n{sites_list}"
-            else:
-                return "No sites currently exist."
-        else:
-            return "Site information unavailable."
+        # Get response from LLM with optimized settings
+        response = client.generate(
+            model="llama3.1:8b",
+            prompt=intent_prompt,
+            options={
+                "num_predict": 10,  # Sufficient for intent name
+                "temperature": 0.0,  # Maximum determinism
+                "top_p": 0.05,      # Very focused responses
+                "top_k": 10,        # Limit vocabulary
+                "stop": ["\n", ".", ",", " ", ":", ";"]  # Stop at first word
+            }
+        )
+        
+        detected_intent = response['response'].strip().upper()
+        print(f"Detected intent: {detected_intent}")
+        
+        # Validate intent and return
+        return detected_intent if detected_intent in valid_intents else "UNKNOWN"
+        
     except Exception as e:
-        return "Unable to retrieve sites."
+        print(f"Error in intent detection: {e}")
+        return "UNKNOWN"
 
 
 
+import prompt
 # Updated execute_phase_1 function
-async def execute_phase_1(session_id: str, user_message: str, client) -> ChatResponse:
+async def execute_phase_1(session_id: str, user_message: str, client,intent:str) -> ChatResponse:
     """Phase 1: Normal chat - Intent detection and data collection"""
     initialize_ollama_site_manager()
     initialize_ollama_permission_manager()
     # Get conversation history from MongoDB
     db_messages = get_conversation_from_db(session_id)
     conversation_history = ""
+    print("db messages: ",db_messages)
     for msg in db_messages:
         role = "User" if msg["role"] == "user" else "Assistant"
         conversation_history += f"{role}: {msg['message']}\n"
-    
-    # Get current sites list
-    sites_list = get_sites_list_formatted()
-    print(f"Available sites: {sites_list}")
 
-    all_user_list = ollama_site_manager.get_all_users()
-    permission_set_list = ollama_permission_manager.get_all_permission_sets()
+    # Get current sites list
+    # sites_list = get_sites_list_formatted()
+    # print(f"Available sites: {sites_list}")
+
+    # all_user_list = ollama_site_manager.get_all_users()
+    # permission_set_list = ollama_permission_manager.get_all_permission_sets()
+    print("getting prompt")
+    new_prompt=prompt.get_data_collection_prompt(intent)
+    print("New prompt: ",new_prompt)
     # Format the prompt with sites list
-    formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list,all_permission_sets_list=permission_set_list)
+    # formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list,all_permission_sets_list=permission_set_list)
     
     # Create full prompt for Phase 1
-    full_prompt = f"""{formatted_prompt}
+    full_prompt = f"""{new_prompt}
 
 ====================CONVERSATION HISTORY====================
 {conversation_history}
@@ -699,6 +443,7 @@ async def execute_phase_1(session_id: str, user_message: str, client) -> ChatRes
 
 ====================YOUR RESPONSE===================="""
 
+    print("into llm now")
     # Get response from LLM
     response = client.generate(
         model="llama3.1:8b",
@@ -729,12 +474,11 @@ async def execute_phase_1(session_id: str, user_message: str, client) -> ChatRes
         context={
             "phase": 1,
             "conversation_length": len(get_conversation_from_db(session_id)),
-            "available_sites": len(sites_list.split('\n')) - 1 if 'Current sites:' in sites_list else 0
-        },
+            "intent": intent},
         data={}
     )
 
-async def execute_phase_2(session_id: str, client) -> ChatResponse:
+async def execute_phase_2(session_id: str, client, intent) -> ChatResponse:
     """Phase 2: Generate JSON and execute operation"""
     
     try:
@@ -745,8 +489,9 @@ async def execute_phase_2(session_id: str, client) -> ChatResponse:
             role = "User" if msg["role"] == "user" else "Assistant"
             conversation_history += f"{role}: {msg['message']}\n"
         
+        new_prompt=prompt.get_json_response_prompt(intent)
         # Create Phase 2 prompt
-        phase_2_prompt = f"""{PHASE_2_PROMPT}
+        phase_2_prompt = f"""{new_prompt}
 
 ====================CONVERSATION HISTORY====================
 {conversation_history}
@@ -821,6 +566,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
     try:
         initialize_ollama_site_manager()
         initialize_ollama_user_manager()
+        initialize_ollama_permission_manager()
         print("in execute")
         operation_type = operation_data.get("operation_type")
         data = operation_data.get("data", {})
@@ -847,7 +593,15 @@ async def execute_site_operation(operation_data: dict) -> dict:
                     break
             
             if site_id:
-                ollama_site_manager.delete_site(site_id)
+                result=ollama_site_manager.delete_site(site_id)    
+
+                if isinstance(result, dict) and not result.get("success", True):
+                    return {
+                "success": False,
+                "message": f"❌ Failed to delete site '{location_name}': {result.get('message')}",
+                "data": {"error": result.get("message"), "site_id": site_id}
+                }   
+
                 return {
                     "success": True,
                     "message": f"✅ Site '{location_name}' deleted successfully!",
@@ -1000,19 +754,23 @@ async def execute_site_operation(operation_data: dict) -> dict:
                 }
             
         elif operation_type == "VIEW_USERS":
-            result = ollama_user_manager.get_all_users()
-            users = result.get('users', [])
+            users = ollama_user_manager.get_all_users() or []   # directly get list
+
             if users:
-                user_list = "\n".join([f"• {user.get('first_name', '')} {user.get('last_name', '')} ({user.get('email', 'No Email')})" for user in users])
+                user_list = "\n".join([
+                    f"• {user.get('name', '')} (ID: {user.get('id', '')})"
+                    for user in users
+                ])
                 message = f"👤 Found {len(users)} users:\n{user_list}"
             else:
                 message = "👤 No users found"
-            
+
             return {
-                "success": True,
-                "message": message,
-                "data": result
+                    "success": True,
+                    "message": message,
+                    "data": {"users": users}   # wrap list in a dict for consistency
             }
+
         
         elif operation_type == "VIEW_PERMISSION_SETS":
             print("in permission sets")
@@ -1027,6 +785,46 @@ async def execute_site_operation(operation_data: dict) -> dict:
             return {
                 "success": True,
                 "message": message,
+                "data": {"permission_sets": result} 
+            }
+        
+        elif operation_type in ["ASSIGN_PERMISSION_SET_TO_USER", "UNASSIGN_PERMISSION_SET_FROM_USER"]:
+            full_name = data.get("full_name")
+            permission_sets = data.get("permission_set", [])
+            
+            # Find user ID
+            user_id = ollama_user_manager.get_user_by_name(full_name)
+            if not user_id:
+                return {
+                    "success": False,
+                    "message": f"❌ User '{full_name}' not found",
+                    "data": {"error": "User not found"}
+                }
+            
+            # Get permission set IDs
+            permission_set_ids = []
+            for ps_name in permission_sets:
+                ps_id = ollama_permission_manager.get_permission_set_id_by_name(ps_name)
+                if ps_id:
+                    permission_set_ids.append(ps_id)
+            
+            if not permission_set_ids:
+                return {
+                    "success": False,
+                    "message": f"❌ None of the specified permission sets were found: {', '.join(permission_sets)}",
+                    "data": {"error": "Permission sets not found"}
+                }
+            
+            if operation_type == "ASSIGN_PERMISSION_SET_TO_USER":
+                result = ollama_permission_manager.assign_permission_sets_to_user(user_id, permission_set_ids)
+                action = "assigned to"
+            else:
+                result = ollama_permission_manager.unassign_permission_sets_from_user(user_id, permission_set_ids)
+                action = "unassigned from"
+            
+            return {
+                "success": True,
+                "message": f"✅ Permission sets {action} user '{full_name}' successfully!",
                 "data": result
             }
 
@@ -1268,37 +1066,288 @@ async def internal_error_handler(request, exc):
 # STARTUP
 # ============================================
 
-if __name__ == "__main__":
-    import sys
-    from datetime import datetime
-    
-    print("🤖 PulsePro Site Management with Ollama")
-    print("=" * 60)
-    print(f"🕐 Starting at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🔧 Model: {ollama_config.model_name}")
-    print(f"📚 Docs: http://localhost:8000/docs")
-    print(f"💬 Chat: http://localhost:8000/chat/interface")
-    print(f"🔍 Health: http://localhost:8000/health")
-    print(f"🧪 Ollama Test: http://localhost:8000/ollama/test")
-    print("=" * 60)
-    
-    # Check command line arguments
-    host = "0.0.0.0"
-    port = 8000
-    reload = True
-    
-    if len(sys.argv) > 1:
-        if "--port" in sys.argv:
-            port_idx = sys.argv.index("--port") + 1
-            if port_idx < len(sys.argv):
-                port = int(sys.argv[port_idx])
+
+# Test Ollama connection endpoint
+@app.get("/ollama/test", response_model=StandardResponse)
+async def test_ollama_connection():
+    """Test Ollama connection and model availability"""
+    try:
+        import ollama
         
-        if "--host" in sys.argv:
-            host_idx = sys.argv.index("--host") + 1
-            if host_idx < len(sys.argv):
-                host = sys.argv[host_idx]
+        # Try to create client with explicit host (adjust if needed)
+        client = ollama.Client(host='http://localhost:11434')
         
-        if "--no-reload" in sys.argv:
-            reload = False
-    
-    uvicorn.run(app, host=host, port=port, reload=reload)
+        # Test basic connection first
+        try:
+            models = client.list()
+            
+            # Handle the models response properly
+            available_models = []
+            if hasattr(models, 'models'):
+                # Handle case where models is an object with models attribute
+                model_list = models.models
+            elif isinstance(models, dict) and 'models' in models:
+                # Handle case where models is a dict with models key
+                model_list = models['models']
+            else:
+                # Handle other cases
+                model_list = models if isinstance(models, list) else [models]
+            
+            # Extract model names
+            for model in model_list:
+                if hasattr(model, 'model'):
+                    # Handle model objects with model attribute
+                    available_models.append(model.model)
+                elif hasattr(model, 'name'):
+                    # Handle model objects with name attribute
+                    available_models.append(model.name)
+                elif isinstance(model, dict):
+                    # Handle dict models
+                    name = model.get('model') or model.get('name') or model.get('id')
+                    if name:
+                        available_models.append(name)
+                else:
+                    # Fallback to string representation
+                    available_models.append(str(model))
+        except Exception as list_error:
+            return StandardResponse(
+                success=False,
+                message="Failed to list models from Ollama",
+                data={
+                    "error": str(list_error),
+                    "suggestions": [
+                        "Check if Ollama is running: ollama serve",
+                        "Verify Ollama is accessible at http://localhost:11434",
+                        "Try: curl http://localhost:11434/api/tags"
+                    ]
+                }
+            )
+        
+        # Test llama3.1:8b specifically
+        model_available = "llama3.1:8b" in available_models
+        
+        if model_available:
+            try:
+                # Test generation with timeout
+                response = client.generate(
+                    model="llama3.1:8b",
+                    prompt="who was the first president of the united states?",
+                    options={"num_predict": 500}
+                )
+
+                print(f"Test response: {response['response']}")
+                
+                return StandardResponse(
+                    success=True,
+                    message="Ollama connection successful",
+                    data={
+                        "available_models": available_models,
+                        "target_model": "llama3.1:8b",
+                        "model_status": "available",
+                        "test_response": response['response']
+                    }
+                )
+            except Exception as gen_error:
+                return StandardResponse(
+                    success=False,
+                    message="Model found but generation failed",
+                    data={
+                        "available_models": available_models,
+                        "target_model": "llama3.1:8b",
+                        "model_status": "available_but_failed",
+                        "error": str(gen_error),
+                        "suggestion": "Model may be corrupted, try: ollama pull llama3.1:8b"
+                    }
+                )
+        else:
+            return StandardResponse(
+                success=False,
+                message="llama3.1:8b model not found",
+                data={
+                    "available_models": available_models,
+                    "target_model": "llama3.1:8b",
+                    "model_status": "not_found",
+                    "suggestion": "Run: ollama pull llama3.1:8b"
+                }
+            )
+            
+    except ImportError:
+        return StandardResponse(
+            success=False,
+            message="Ollama Python package not installed",
+            data={
+                "error": "ImportError: ollama module not found",
+                "suggestion": "Install with: pip install ollama"
+            }
+        )
+    except Exception as e:
+        return StandardResponse(
+            success=False,
+            message="Ollama connection failed",
+            data={
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "suggestions": [
+                    "Make sure Ollama is running: ollama serve",
+                    "Check if port 11434 is accessible",
+                    "Verify Ollama installation: ollama --version",
+                    "Try manual test: curl http://localhost:11434/api/tags"
+                ]
+            }
+        )
+
+
+# Phase 1 Prompt - Intent Detection and Data Collection
+PHASE_1_PROMPT = """You are PulsePro AI Assistant.
+
+====================CORE RULES====================
+• Handle ONLY these operations: CREATE/VIEW/DELETE sites and users, ASSIGN/UNASSIGN users to sites, VIEW permission sets
+• Ignore unrelated queries. Reply: "I can only help with PulsePro operations."
+• Ask for missing information. Never assume values.
+• If user says cancel/stop/exit/abort/halt/quit/terminate/end, reply: "Operation cancelled. No action taken."
+• When you have all required data, ask: "I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================OPERATIONS & REQUIRED DATA====================
+1. CREATE_SITE: location_name
+2. VIEW_SITES: no data needed  
+3. DELETE_SITE: location_name
+4. ASSIGN_USERS_TO_SITE: location_name, user_names (list)
+5. UNASSIGN_USERS_FROM_SITE: location_name, user_names (list)
+6. CREATE_USER: first_name, last_name, email, permission_set
+7. DELETE_USER: full_name
+8. VIEW_USERS: no data needed
+9. VIEW_PERMISSION_SETS: no data needed
+
+====================CONVERSATION EXAMPLES====================
+
+CREATE SITE:
+User: "Create a site"
+Assistant: "What should be the name/location of this site?"
+User: "Mumbai Office"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+DELETE SITE:
+User: "Delete a site"
+Assistant: "Which site do you want to delete? Available sites: {all_sites_list}"
+User: "Bangalore Hub"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+VIEW SITES:
+User: "Show me all sites"
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+ASSIGN USERS TO SITE:
+User: "Assign users to site"
+Assistant: "Which site? Available sites: {all_sites_list}"
+User: "Delhi Office"
+Assistant: "Which users? Available users: {all_users_list}"
+User: "John, Sarah"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+UNASSIGN USERS FROM SITE:
+User: "Unassign users from site"
+Assistant: "Which site? Available sites: {all_sites_list}"
+User: "Delhi Office"
+Assistant: "Which users? Available users: {all_users_list}"
+User: "John, Sarah"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+CREATE USER:
+User: "Create a user"
+Assistant: "What is the first name?"
+User: "John"
+Assistant: "What is the last name?"
+User: "Doe"
+Assistant: "What is the email address?"
+User: "john@company.com"
+Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
+User: "Field User"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+DELETE USER:
+User: "Delete a user"
+Assistant: "Which user? Available users: {all_users_list}"
+User: "John Doe"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+VIEW USERS:
+User: "Show me all users"
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+VIEW PERMISSION SETS:
+User: "Show me all permission sets"
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+ASSIGN PERMISSION SETS TO USER:
+User: "Assign permission set to user"
+Assistant: "Which user? Available users: {all_users_list}"
+User: "John Doe"
+Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
+User: "Field User"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+UNASSIGN PERMISSION SETS FROM USER:
+User: "Unassign permission set from user"
+Assistant: "Which user? Available users: {all_users_list}"
+User: "John Doe"
+Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
+User: "Field User and Admin"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+
+====================WHEN TO SHOW LISTS====================
+Show sites list ONLY for: DELETE_SITE, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE
+Show users list ONLY for: ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, DELETE_USER
+Show permission sets ONLY for: CREATE_USER
+
+Available Sites: {all_sites_list}
+Available Users: {all_users_list}
+Available Permission Sets: {all_permission_sets_list}
+"""
+
+# Phase 2 Prompt - JSON Generation
+PHASE_2_PROMPT = """You are a JSON generator for PulsePro Site operations.
+
+ANALYZE the conversation history and generate ONLY a JSON response in this EXACT format:
+
+For CREATE_SITE:
+{"data": {"location_name": "EXTRACTED_NAME"}, "operation_type": "CREATE_SITE"}
+
+For VIEW_SITES:
+{"data": {}, "operation_type": "VIEW_SITES"}
+
+For DELETE_SITE:
+{"data": {"location_name": "EXTRACTED_NAME"}, "operation_type": "DELETE_SITE"}
+
+For ASSIGN_USERS_TO_SITE:
+{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "ASSIGN_USERS_TO_SITE"}
+
+For UNASSIGN_USERS_FROM_SITE:
+{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "UNASSIGN_USERS_FROM_SITE"}
+
+For CREATE_USER:
+{"data": {"first_name": "FIRSTNAME", "last_name": "LASTNAME", "email": "EMAIL", "permission_set": "PERMISSIONSET"}, "operation_type": "CREATE_USER"}
+
+For DELETE_USER:
+{"data": {"full_name": "FULLNAME"}, "operation_type": "DELETE_USER"}
+
+For VIEW_USERS:
+{"data": {}, "operation_type": "VIEW_USERS"}
+
+For VIEW_PERMISSION_SETS:
+{"data": {}, "operation_type": "VIEW_PERMISSION_SETS"}
+
+For ASSIGN_PERMISSION_SET_TO_USER:
+{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET 1" , PERMISSIONSET 2]}, "operation_type": "ASSIGN_PERMISSION_SET_TO_USER"}
+
+For UNASSIGN_PERMISSION_SET_FROM_USER:
+{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET 1" , PERMISSIONSET 2]}, "operation_type": "UNASSIGN_PERMISSION_SET_FROM_USER"}
+
+RULES:
+- Extract the data from the conversation history
+- Return ONLY the JSON object, nothing else
+- No explanations, no text, no markdown, just pure JSON
+- Use the exact operation_type names shown above
+- Strictly follow the JSON format shown above , including field names and structure
+
+"""
