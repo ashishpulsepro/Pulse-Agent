@@ -251,9 +251,10 @@ Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execut
 
 ====================INSTRUCTIONS====================
 • Ask for first_name, last_name, email, and permission_set in sequence
-• Show available permission sets when asking for permission_set
+• Must Show available permission sets when you will be asking for permission_set that is "Which permission set?"
 • Confirm when you have all four required fields
 • Wait for 'Proceed' confirmation before executing
+• Please follow the conversation between User and Assistant mentioned below as conversation history and then proceed to ask for missing information
 
 Available Permission Sets: {permissions_formatted}
 """,
@@ -302,14 +303,14 @@ Assistant: "Great! Type 'Proceed' to execute this operation."
 
 """,
 
-        'ASSIGN_PERMISSION_SETS_TO_USER': BASE_RULES + f"""====================ASSIGN PERMISSION SETS TO USER OPERATION====================
+        'ASSIGN_PERMISSION_SET_TO_USER': BASE_RULES + f"""====================ASSIGN PERMISSION SET TO USER OPERATION====================
 REQUIRED DATA: user_name, permission_sets (list)
 
 ====================CONVERSATION FLOW====================
 User: "Assign permission set to user"
 Assistant: "Which user? Available users: {users_formatted}"
-User: "John Doe"
-Assistant: "Which permission set? Available sets: {permissions_formatted}"
+User: "Ashish Saw"
+Assistant: "Which permission set? Mention the names \n Available sets: {permissions_formatted}"
 User: "Field User"
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -325,7 +326,7 @@ Available Users: {users_formatted}
 Available Permission Sets: {permissions_formatted}
 """,
 
-        'UNASSIGN_PERMISSION_SETS_FROM_USER': BASE_RULES + f"""====================UNASSIGN PERMISSION SETS FROM USER OPERATION====================
+        'UNASSIGN_PERMISSION_SET_FROM_USER': BASE_RULES + f"""====================UNASSIGN PERMISSION SET FROM USER OPERATION====================
 REQUIRED DATA: user_name, permission_sets (list)
 
 ====================CONVERSATION FLOW====================
@@ -572,34 +573,34 @@ Always return exactly:
 Generate the JSON response with empty data object.
 """,
 
-        'ASSIGN_PERMISSION_SETS_TO_USER': BASE_RULES + """====================ASSIGN_PERMISSION_SETS_TO_USER JSON GENERATION====================
+        'ASSIGN_PERMISSION_SET_TO_USER': BASE_RULES + """====================ASSIGN_PERMISSION_SET_TO_USER JSON GENERATION====================
 
 REQUIRED DATA TO EXTRACT:
 - full_name: Complete name of the user
 - permission_set: List of permission sets to be assigned to the user
 
 EXACT JSON FORMAT TO RETURN:
-{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET1", "PERMISSIONSET2"]}, "operation_type": "ASSIGN_PERMISSION_SETS_TO_USER"}
+{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET1", "PERMISSIONSET2"]}, "operation_type": "ASSIGN_PERMISSION_SET_TO_USER"}
 
 EXAMPLE:
 If conversation mentions assigning "Field User, Admin" permissions to "John Doe", return:
-{"data": {"full_name": "John Doe", "permission_set": ["Field User", "Admin"]}, "operation_type": "ASSIGN_PERMISSION_SETS_TO_USER"}
+{"data": {"full_name": "John Doe", "permission_set": ["Field User", "Admin"]}, "operation_type": "ASSIGN_PERMISSION_SET_TO_USER"}
 
 Extract the full_name and permission_set list from the conversation and generate the JSON response.
 """,
 
-        'UNASSIGN_PERMISSION_SETS_FROM_USER': BASE_RULES + """====================UNASSIGN_PERMISSION_SETS_FROM_USER JSON GENERATION====================
+        'UNASSIGN_PERMISSION_SET_FROM_USER': BASE_RULES + """====================UNASSIGN_PERMISSION_SET_FROM_USER JSON GENERATION====================
 
 REQUIRED DATA TO EXTRACT:
 - full_name: Complete name of the user
 - permission_set: List of permission sets to be unassigned from the user
 
 EXACT JSON FORMAT TO RETURN:
-{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET1", "PERMISSIONSET2"]}, "operation_type": "UNASSIGN_PERMISSION_SETS_FROM_USER"}
+{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET1", "PERMISSIONSET2"]}, "operation_type": "UNASSIGN_PERMISSION_SET_FROM_USER"}
 
 EXAMPLE:
 If conversation mentions unassigning "Field User, Admin" permissions from "John Doe", return:
-{"data": {"full_name": "John Doe", "permission_set": ["Field User", "Admin"]}, "operation_type": "UNASSIGN_PERMISSION_SETS_FROM_USER"}
+{"data": {"full_name": "John Doe", "permission_set": ["Field User", "Admin"]}, "operation_type": "UNASSIGN_PERMISSION_SET_FROM_USER"}
 
 Extract the full_name and permission_set list from the conversation and generate the JSON response.
 """

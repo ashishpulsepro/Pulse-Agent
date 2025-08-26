@@ -542,6 +542,7 @@ class UserManager:
             users=[{
                 'id':user.get("id"),
                 'name':user.get("member_name"),
+                'user':user.get("user_id")
             } for user in team]
 
             return users
@@ -554,6 +555,7 @@ class UserManager:
         users = self.get_all_users()
         for user in users:
             if user['name'].lower() == name.lower():
+                print("user: ", user['id'])
                 return user['id']
         return None
     
@@ -562,5 +564,6 @@ class UserManager:
         users = self.get_all_users()
         for user in users:
             if user['name'].lower() == name.lower():
+                print("user: ", user['user'])
                 return user['user']
         return None

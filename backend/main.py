@@ -202,14 +202,15 @@ conversations_collection = db.conversations
 # Simple session storage (keeping for backward compatibility)
 chat_sessions = {}
 
-def save_conversation_to_db(session_id: str, role: str, message: str):
+def save_conversation_to_db(session_id: str, role: str, message: str, intent: str = None):
     """Save message to MongoDB"""
     try:
         conversations_collection.insert_one({
             "session_id": session_id,
             "role": role,
             "message": message,
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
+            "intent": intent
         })
     except Exception as e:
         logger.error(f"Failed to save to MongoDB: {e}")
@@ -235,9 +236,12 @@ def clear_conversation_from_db(session_id: str):
 def get_session_intent(session_id):
     """Get the intent for a session from MongoDB"""
     try:
+        # Find any document with the session_id that has an intent field
         session = conversations_collection.find_one(
-            {"session_id": session_id, "role": "assistant", "key": "intent"}
+            {"session_id": session_id, "intent": {"$exists": True}},
+            sort=[("timestamp", -1)]  # Get the most recent one
         )
+        print("session intent inside get_session_intent : ", session)
         return session['intent'] if session else None
     except Exception as e:
         logger.error(f"Failed to get intent from MongoDB: {e}")
@@ -245,27 +249,20 @@ def get_session_intent(session_id):
 
 
 def store_session_intent(session_id, session_intent):
-    """Update the intent for a session (only if it already exists)"""
+    """Update the intent for all documents in a session"""
     try:
-        # Update assistant intent if it exists
-        result_assistant = conversations_collection.update_one(
-            {"session_id": session_id, "role": "assistant", "key": "intent"},
+        # Update intent for all documents with the given session_id
+        result = conversations_collection.update_many(
+            {"session_id": session_id},  # Match all documents with this session_id
             {"$set": {"intent": session_intent, "timestamp": datetime.utcnow()}},
-            upsert=False  # do NOT create new
+            upsert=False  # do NOT create new documents
         )
 
-        # Update user intent if it exists
-        result_user = conversations_collection.update_one(
-            {"session_id": session_id, "role": "user", "key": "intent"},
-            {"$set": {"intent": session_intent, "timestamp": datetime.utcnow()}},
-            upsert=False
-        )
-
-        if result_assistant.matched_count == 0 and result_user.matched_count == 0:
-            logger.warning(f"No existing intent docs found for session {session_id}, nothing updated")
+        if result.matched_count == 0:
+            logger.warning(f"No documents found for session {session_id}, nothing updated")
             return False
 
-        logger.info(f"Intent '{session_intent}' updated for session {session_id}")
+        logger.info(f"Intent '{session_intent}' updated for {result.modified_count} documents in session {session_id}")
         return True
 
     except Exception as e:
@@ -281,6 +278,7 @@ async def chat_with_agent(chat_request: ChatRequest):
     session_id = chat_request.session_id or str(uuid.uuid4())
     intent = get_session_intent(session_id) or "UNKNOWN"
     user_message = chat_request.message.strip()
+    print(f"Session ID: {session_id}, Intent initial: {intent}")
     
     try:
         client = get_ollama_client()
@@ -290,7 +288,7 @@ async def chat_with_agent(chat_request: ChatRequest):
             chat_sessions[session_id] = {"conversation": []}
         
         # Add user message to conversation and save to MongoDB
-        save_conversation_to_db(session_id, "user", user_message)
+        save_conversation_to_db(session_id, "user", user_message, intent=intent)
 
         if intent == 'UNKNOWN':
             intent = await execute_phase_0(session_id, user_message, client)
@@ -362,20 +360,103 @@ CONVERSATION HISTORY:
 
 VALID INTENTS:
 CREATE_SITE, DELETE_SITE, VIEW_SITES, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, CREATE_USER, DELETE_USER, VIEW_USERS, VIEW_PERMISSION_SETS, ASSIGN_PERMISSION_SET_TO_USER, UNASSIGN_PERMISSION_SET_FROM_USER, UNKNOWN
+# INTENT CLASSIFICATION RULES
 
-INTENT CLASSIFICATION RULES:
-- "create site/location/office/branch" → CREATE_SITE
-- "delete/remove site/location/office" → DELETE_SITE  
-- "show/view/list/display sites/locations" → VIEW_SITES
-- "assign user(s) to site/location" → ASSIGN_USERS_TO_SITE
-- "unassign/remove user(s) from site" → UNASSIGN_USERS_FROM_SITE
-- "create/add new user/account/employee" → CREATE_USER
-- "delete/remove user/account/employee" → DELETE_USER
-- "show/view/list/display users/accounts" → VIEW_USERS
-- "show/view/list permissions/permission sets" → VIEW_PERMISSION_SETS
-- "assign/give permission(s) to user" → ASSIGN_PERMISSION_SET_TO_USER
-- "unassign/remove permission(s) from user" → UNASSIGN_PERMISSION_SET_FROM_USER
-- Greetings, unrelated topics, unclear requests → UNKNOWN
+Analyze the user's message and classify it into ONE of the following intents. Use the keywords and context patterns to make accurate classifications.
+
+## PERMISSION MANAGEMENT (Check First - Most Specific)
+
+**ASSIGN_PERMISSION_SET_TO_USER**
+- Keywords: assign, give, grant, provide, set, add
+- Objects: permissions, permission sets, roles, access rights, privileges, admin, manager, viewer
+- Pattern: permission/role/access + to + user/person/employee
+- Examples: "assign admin role to John", "give permissions to user", "grant access to employee", "assign permissions to user"
+
+**UNASSIGN_PERMISSION_SET_FROM_USER**
+- Keywords: unassign, remove, revoke, take away, strip, withdraw
+- Objects: permissions, permission sets, roles, access rights, privileges, admin, manager, viewer
+- Pattern: permission/role/access + from + user/person/employee  
+- Examples: "remove admin access from user", "revoke permissions", "unassign role from employee"
+
+**VIEW_PERMISSION_SETS**
+- Keywords: show, view, list, display, see, get, what are, available
+- Objects: permissions, permission sets, roles, access rights, privileges
+- Examples: "show permissions", "list permission sets", "what roles are available", "view access rights"
+
+## USER-SITE ASSIGNMENT
+
+**ASSIGN_USERS_TO_SITE**
+- Keywords: assign, add, attach, link, connect, move, transfer
+- Objects: user, employee, person, staff + site, location, office, branch, facility
+- Pattern: user/employee/person + to/at + site/location/office/branch (NOT permissions)
+- Exclusion: Does NOT contain permission-related words
+- Examples: "assign John to Mumbai office", "add users to site", "move employee to branch"
+
+**UNASSIGN_USERS_FROM_SITE**
+- Keywords: unassign, remove, detach, unlink, disconnect, transfer away
+- Objects: user, employee, person, staff + site, location, office, branch, facility
+- Pattern: user/employee/person + from + site/location/office/branch (NOT permissions)
+- Examples: "remove user from office", "unassign employee from site", "detach from location"
+
+## SITE/LOCATION MANAGEMENT
+
+**CREATE_SITE**
+- Keywords: create, add, new, establish, set up, register, open
+- Objects: site, location, office, branch, facility, workplace, center
+- Examples: "create a new office", "add location", "set up branch", "establish new site"
+
+**DELETE_SITE**  
+- Keywords: delete, remove, close, shut down, eliminate, deactivate, disable
+- Objects: site, location, office, branch, facility
+- Examples: "delete the Mumbai office", "remove location", "close branch", "shut down site"
+
+**VIEW_SITES**
+- Keywords: show, view, list, display, see, get, fetch, find, search
+- Objects: sites, locations, offices, branches, facilities (plural forms)
+- Examples: "show all locations", "list offices", "view sites", "display branches"
+
+## USER MANAGEMENT
+
+**CREATE_USER**
+- Keywords: create, add, new, register, onboard, hire
+- Objects: user, account, employee, person, staff, member
+- Examples: "create new user", "add employee", "register account", "onboard staff member"
+
+**DELETE_USER**
+- Keywords: delete, remove, deactivate, disable, terminate, offboard
+- Objects: user, account, employee, person, staff
+- Examples: "delete user account", "remove employee", "deactivate user", "terminate staff"
+
+**VIEW_USERS**
+- Keywords: show, view, list, display, see, get, fetch, find, search
+- Objects: users, accounts, employees, staff, members (plural forms)
+- Examples: "show all users", "list employees", "view user accounts", "display staff"
+
+## DEFAULT CLASSIFICATION
+
+**UNKNOWN**
+- Apply when the message doesn't clearly match any specific intent
+- Includes: greetings, casual conversation, unclear requests, unrelated topics
+- Examples: "hello", "how are you?", "what's the weather?", "I need help with something"
+
+---
+
+## CLASSIFICATION GUIDELINES
+
+1. **Check Permission Management first** - these are the most specific patterns
+2. **Look for permission-related keywords** (permissions, roles, access, admin, manager, viewer)
+3. **Distinguish between user-to-site vs permission-to-user assignments**:
+   - "assign user TO site" = ASSIGN_USERS_TO_SITE
+   - "assign permissions TO user" = ASSIGN_PERMISSION_SET_TO_USER
+4. **Prioritize object identification**:
+   - If message contains permission/role/access words → Permission Management
+   - If message contains site/location/office words → Site Management or User-Site Assignment
+5. **Consider context and sentence structure**, not just individual words
+6. **Look for action verbs** combined with relevant objects
+7. **Distinguish between singular and plural** (create user vs. view users)
+8. **When in doubt**, classify as UNKNOWN rather than guessing
+9. **Handle variations** in terminology (office = site = location = branch)
+10. **Consider implicit requests** ("John needs admin access" = ASSIGN_PERMISSION_SET_TO_USER)
 
 CRITICAL: Return ONLY the intent name (e.g., "CREATE_SITE" or "UNKNOWN"). No explanations, no other text.
 """
@@ -387,7 +468,7 @@ CRITICAL: Return ONLY the intent name (e.g., "CREATE_SITE" or "UNKNOWN"). No exp
             prompt=intent_prompt,
             options={
                 "num_predict": 10,  # Sufficient for intent name
-                "temperature": 0.0,  # Maximum determinism
+                "temperature": 0.1,  # Maximum determinism
                 "top_p": 0.05,      # Very focused responses
                 "top_k": 10,        # Limit vocabulary
                 "stop": ["\n", ".", ",", " ", ":", ";"]  # Stop at first word
@@ -428,7 +509,6 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str)
     # permission_set_list = ollama_permission_manager.get_all_permission_sets()
     print("getting prompt")
     new_prompt=prompt.get_data_collection_prompt(intent)
-    print("New prompt: ",new_prompt)
     # Format the prompt with sites list
     # formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list,all_permission_sets_list=permission_set_list)
     
@@ -442,6 +522,7 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str)
 {user_message}
 
 ====================YOUR RESPONSE===================="""
+    print("New prompt: ",full_prompt)
 
     print("into llm now")
     # Get response from LLM
@@ -450,14 +531,14 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str)
         prompt=full_prompt,
         options={
             "num_predict": 450,
-            "temperature": 0.7
+            "temperature": 0.5
         }
     )
     
     ai_response = response['response'].strip()
     
     # Save AI response to MongoDB
-    save_conversation_to_db(session_id, "assistant", ai_response)
+    save_conversation_to_db(session_id, "assistant", ai_response, intent=intent)
     
     # Determine status
     if "Type 'Proceed' to execute" in ai_response:
@@ -497,6 +578,7 @@ async def execute_phase_2(session_id: str, client, intent) -> ChatResponse:
 {conversation_history}
 
      JSON:"""
+        print("Phase 2 prompt: ",phase_2_prompt)
         
         # Get JSON response from LLM
         response = client.generate(
