@@ -567,3 +567,188 @@ class UserManager:
                 print("user: ", user['user'])
                 return user['user']
         return None
+    
+
+class TemplateManager:
+    """Manage templates for users"""
+    def __init__(self, auth_manager: AuthenticationManager):
+        self.auth_manager = auth_manager
+        self.base_url = auth_manager.base_url
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers with authentication"""
+        access_token = self.auth_manager.get_access_token()
+        return {
+            'Accept': 'application/json, text/plain, */*',
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+            'Origin': 'https://staging.pulsepro.ai',
+            'Referer': 'https://staging.pulsepro.ai/',
+        }
+
+    def get_all_templates_with_id(self) -> List[Dict[str, Any]]:
+        url = f"{self.base_url}/customer/forms/"
+        headers = self._get_headers()
+
+        payload = {
+            "limit": 50,
+            "offset": 0,
+            "template_status": "Active",
+            "orderDir": "desc",
+            "orderBy": "id",
+            "search_keyword": ""
+        }
+
+        try:
+            response = requests.post(url, headers=headers,json=payload)
+            response.raise_for_status()
+
+            result = [ {
+                "id": template.get("id"),
+                "name": template.get("form_name"),
+                "created_by": template.get("created_by"),
+                "is_scheduled": template.get("scheduled"),
+                "created_by_id": template.get("created_by_id")
+
+            } for template in response.json().get("forms", [])]
+
+            return result
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to retrieve templates: {e}")
+            return {"error": str(e)}
+        
+
+    def get_all_templates(self) -> List[str]:
+
+        url = f"{self.base_url}/customer/forms/"
+        headers = self._get_headers()
+
+        payload = {
+            "limit": 50,
+            "offset": 0,
+            "template_status": "Active",
+            "orderDir": "desc",
+            "orderBy": "id",
+            "search_keyword": ""
+        }
+
+        try:
+            response = requests.post(url, headers=headers,json=payload)
+            response.raise_for_status()
+
+            result = [ {
+
+                "name": template.get("form_name"),
+                "created_by": template.get("created_by"),
+
+            } for template in response.json().get("forms", [])]
+
+            return result
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to retrieve templates: {e}")
+            return {"error": str(e)}
+
+
+    def get_all_template_added_not_added_to_user(self, user_id: int) ->  List[Dict[str, Any]]:
+        """Get all templates added and not added to a specific user"""
+
+        url = f"{self.base_url}/customer/get_all_templates_added_and_not_added_to_user/{user_id}/"
+        headers = self._get_headers()
+
+        payload={}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            print("response: ", response.json())
+            json_data = response.json()
+            result = json_data.get("templates", []) if isinstance(json_data, dict) else []
+            print("Templates retrieved: ", result)
+            final_result=[
+                {
+                    "id": template.get("id"),
+                    "template_name": template.get("template_name")
+                }
+                for template in result if isinstance(template, dict)
+            ]   
+
+            return final_result
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to retrieve templates: {e}")
+            return {"error": str(e)}
+
+    def get_assign_user_template_id_by_name(self, template_name: str,user_id:int) -> Optional[int]:
+        """Get assigned template IDs for a user"""
+        print("calling get_assign_user_template_id_by_name")
+        all_templates = self.get_all_template_added_not_added_to_user(user_id=user_id)
+        try:
+            for template in all_templates:
+                if template.get("template_name") == template_name:
+                    return template.get("id") 
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to retrieve assigned templates: {e}")
+            return 0
+
+    def get_template_id_by_name(self, template_name: str) -> Optional[int]:
+        """Get template ID by name"""
+        all_templates = self.get_all_templates_with_id()
+        for template in all_templates:
+            if template.get("name") == template_name:
+                return template.get("id")
+        return None
+
+    def delete_template(self, template_id: int) -> bool:
+        """Delete template by ID"""
+        url = f"{self.base_url}/customer/del_form/{template_id}"
+        headers = self._get_headers()
+
+        try:
+            print("requesting deletion of template ID:", template_id)
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to delete template: {e}")
+            return False
+
+    def assign_templates_to_user(self, user_id: int, template_ids: List[Any]) -> bool:
+        """Assign templates to a user"""
+        url = f"{self.base_url}/customer/map_checklist_to_user/{user_id}/"
+        headers = self._get_headers()
+
+        formatted_template_ids = [{"id": template_id} for template_id in template_ids]
+        print("formatted template IDs: ", formatted_template_ids)
+
+        payload = {
+            "checklists": formatted_template_ids,
+            "type":"is_invited_user"
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to assign templates to user: {e}")
+            return False
+
+    def unassign_templates_from_user(self, user_id: int, template_ids: List[Any]) -> bool:
+        """Unassign templates from a user"""
+        url = f"{self.base_url}/customer/delete_mapped_checklist_from_user/{user_id}/"
+        headers = self._get_headers()
+
+        formatted_template_ids = [{"id": template_id} for template_id in template_ids]
+
+        payload = {
+            "checklists": formatted_template_ids,
+            "type": "is_invited_user"
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to unassign templates from user: {e}")
+            return False

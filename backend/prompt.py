@@ -67,6 +67,27 @@ def initialize_ollama_user_manager():
         ollama_user_manager = None
         return False
 
+def initialize_ollama_template_manager():
+    """Initialize the Ollama template manager"""
+    global ollama_template_manager
+
+    try:
+        # Initialize your site manager here
+        # Replace this with your actual SiteManager initialization
+        from site_manager import TemplateManager  # Replace with actual import
+
+        auth_manager = AuthenticationManager()
+        ollama_template_manager = TemplateManager(auth_manager)
+        # Test the connection
+
+        print("Ollama Template Manager initialized successfully")
+        return True
+
+    except Exception as e:
+        print(f"Failed to initialize Ollama Template Manager: {e}")
+        ollama_template_manager = None
+        return False
+
 
 def get_sites_list_formatted():
     """Get all sites and format them as a string"""
@@ -102,6 +123,7 @@ def get_data_collection_prompt(operation_type):
     """
     initialize_ollama_site_manager()
     initialize_ollama_permission_manager()
+    initialize_ollama_template_manager()
 
     # Get current data from systems
     all_sites_list = get_sites_list_formatted()
@@ -111,7 +133,8 @@ def get_data_collection_prompt(operation_type):
     print("got the users list: ", all_users_list)
     all_permission_sets_list = ollama_permission_manager.get_all_permission_sets()
     print("got the permission sets list: ", all_permission_sets_list)
-    
+    all_templates_list = ollama_template_manager.get_all_templates()
+    print("got the templates list: ", all_templates_list)
     # Convert lists to formatted strings for better display
  # Safe site formatter
 
@@ -121,6 +144,10 @@ def get_data_collection_prompt(operation_type):
     users_formatted = "\n".join([
         f"{idx+1}. {user}" for idx, user in enumerate(all_users_list)
     ]) if all_users_list else "No users available"
+
+    templates_formatted = "\n".join([
+        f"{idx+1}. {template}" for idx, template in enumerate(all_templates_list)
+    ]) if all_templates_list else "No templates available"
 
 # Permission sets
     permissions_formatted = "\n".join([
@@ -352,6 +379,83 @@ Do not repeatedly ask the same question // follow the conversation history below
 
 Available Users: {users_formatted}
 Available Permission Sets: {permissions_formatted}
+""",
+
+        'SHOW_ALL_TEMPLATES':BASE_RULES+f"""====================SHOW ALL TEMPLATES OPERATION====================
+REQUIRED DATA: no data needed
+
+====================CONVERSATION FLOW====================
+User: "Show me all templates"
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• No additional data needed
+• Immediately ask for 'Proceed' confirmation
+
+""",
+
+        'DELETE_TEMPLATE':BASE_RULES+f"""====================DELETE TEMPLATE OPERATION====================
+REQUIRED DATA: template_id
+
+====================CONVERSATION FLOW====================
+User: "Delete template"
+Assistant: "Which template? Available templates: {templates_formatted}"
+User: "Field User"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available templates when asking which template
+• Ask for template ID
+• Confirm when you have template_id
+• Wait for 'Proceed' confirmation before executing
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Templates: {templates_formatted}
+""",
+        "ASSIGN_TEMPLATE_TO_USER": f"""====================ASSIGN TEMPLATE TO USER OPERATION====================
+REQUIRED DATA: user_name, template_name
+
+====================CONVERSATION FLOW====================
+User: "Assign template to user"
+Assistant: "Which user? Mention single user\n Available users: {users_formatted}"
+User: "John Doe"
+Assistant: "Which template? Mention the full name \n Available templates: {templates_formatted}"
+User: "Checklist 1"// can be single or multiple checklists
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available users when asking which user
+• Show available templates when asking which template
+• Ask for user name first, then template
+• Confirm when you have user_name and template_name 
+• Wait for 'Proceed' confirmation before executing
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Users: {users_formatted}
+Available Templates: {templates_formatted}
+""",
+
+        "UNASSIGN_TEMPLATE_FROM_USER": f"""====================UNASSIGN TEMPLATE FROM USER OPERATION====================
+REQUIRED DATA: user_name, template_name
+
+====================CONVERSATION FLOW====================
+User: "Unassign template from user"
+Assistant: "Which user? Mention single user\n Available users: {users_formatted}"
+User: "John Doe"
+Assistant: "Which template? Mention the full name \n Available templates: {templates_formatted}"
+User: "Checklist 1"// can be single or multiple checklists
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available users when asking which user
+• Show available templates when asking which template
+• Ask for user name first, then template
+• Confirm when you have user_name and template_name
+• Wait for 'Proceed' confirmation before executing
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Users: {users_formatted}
+Available Templates: {templates_formatted}
 """,
 
         'UNKNOWN': f"""You are PulsePro AI Assistant.
@@ -608,7 +712,72 @@ If conversation mentions unassigning "Field User, Admin" permissions from "John 
 {"data": {"full_name": "John Doe", "permission_set": ["Field User", "Admin"]}, "operation_type": "UNASSIGN_PERMISSION_SET_FROM_USER"}
 
 Extract the full_name and permission_set list from the conversation and generate the JSON response.
-"""
+""",
+
+        'SHOW_ALL_TEMPLATES': BASE_RULES + """====================SHOW_ALL_TEMPLATES JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- No data extraction needed for this operation
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {}, "operation_type": "SHOW_ALL_TEMPLATES"}
+
+EXAMPLE:
+Always return exactly:
+{"data": {}, "operation_type": "SHOW_ALL_TEMPLATES"}
+
+Generate the JSON response with empty data object.
+""",
+
+        'DELETE_TEMPLATE': BASE_RULES + """====================DELETE_TEMPLATE JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- template_name: Full name of the template to be deleted
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"template_name": "TEMPLATENAME"}, "operation_type": "DELETE_TEMPLATE"}
+
+EXAMPLE:
+If conversation mentions deleting template "Checklist 1", return:
+{"data": {"template_name": "Checklist 1"}, "operation_type": "DELETE_TEMPLATE"}
+
+Extract the template_name from the conversation and generate the JSON response.
+""",
+
+        'ASSIGN_TEMPLATE_TO_USER': BASE_RULES + """====================ASSIGN_TEMPLATE_TO_USER JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- user_name: Complete name of the user
+- template_name: Full name of the templates to be assigned , can be single or multiple
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"user_name": "USERNAME", "template_name": [
+"TEMPLATENAME 1", "TEMPLATENAME 2"]}, "operation_type": "ASSIGN_TEMPLATE_TO_USER"}
+
+EXAMPLE:
+If conversation mentions assigning template "Checklist 1" and "Checklist 2" to user "John Doe", return:
+{"data": {"user_name": "John Doe", "template_name": ["Checklist 1","Checklist 2"]}, "operation_type": "ASSIGN_TEMPLATE_TO_USER"}
+
+Extract the user_name and template_name from the conversation and generate the JSON response.
+""",
+
+        'UNASSIGN_TEMPLATE_FROM_USER': BASE_RULES + """====================UNASSIGN_TEMPLATE_FROM_USER JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- user_name: Complete name of the user
+- template_name: Full name of the templates to be unassigned , can be single or multiple
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"user_name": "USERNAME", "template_name": [
+"TEMPLATENAME 1", "TEMPLATENAME 2"]}, "operation_type": "UNASSIGN_TEMPLATE_FROM_USER"}
+
+EXAMPLE:
+If conversation mentions unassigning template "Checklist 1" and "Checklist 2" from user "John Doe", return:
+{"data": {"user_name": "John Doe", "template_name": ["Checklist 1","Checklist 2"]}, "operation_type": "UNASSIGN_TEMPLATE_FROM_USER"}
+
+Extract the user_name and template_name from the conversation and generate the JSON response.
+""",
+
     }
     
     # Return the specific prompt or a default message if operation not found

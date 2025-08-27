@@ -136,6 +136,26 @@ def initialize_ollama_user_manager():
         ollama_user_manager = None
         return False
 
+def initialize_ollama_template_manager():
+    """Initialize the Ollama template manager"""
+    global ollama_template_manager
+
+    try:
+        # Initialize your site manager here
+        # Replace this with your actual SiteManager initialization
+        from site_manager import TemplateManager  # Replace with actual import
+
+        auth_manager = AuthenticationManager()
+        ollama_template_manager = TemplateManager(auth_manager)
+        # Test the connection
+
+        print("Ollama Template Manager initialized successfully")
+        return True
+
+    except Exception as e:
+        print(f"Failed to initialize Ollama Template Manager: {e}")
+        ollama_template_manager = None
+        return False
 
 
 
@@ -345,7 +365,8 @@ async def execute_phase_0(session_id: str, user_message: str, client) -> str:
         "ASSIGN_USERS_TO_SITE", "UNASSIGN_USERS_FROM_SITE", 
         "CREATE_USER", "DELETE_USER", "VIEW_USERS", 
         "VIEW_PERMISSION_SETS", "ASSIGN_PERMISSION_SET_TO_USER", 
-        "UNASSIGN_PERMISSION_SET_FROM_USER"
+        "UNASSIGN_PERMISSION_SET_FROM_USER",
+        "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", "DELETE_TEMPLATE"
     ]
     
     # Improved intent detection prompt
@@ -358,14 +379,20 @@ USER MESSAGE: "{user_message}"
 CONVERSATION HISTORY:
 {conversation_history}
 
-VALID INTENTS:
-CREATE_SITE, DELETE_SITE, VIEW_SITES, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, CREATE_USER, DELETE_USER, VIEW_USERS, VIEW_PERMISSION_SETS, ASSIGN_PERMISSION_SET_TO_USER, UNASSIGN_PERMISSION_SET_FROM_USER, UNKNOWN
+ONLY VALID INTENTS:
+CREATE_SITE, DELETE_SITE, VIEW_SITES, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, CREATE_USER, DELETE_USER, VIEW_USERS,
+VIEW_PERMISSION_SETS, ASSIGN_PERMISSION_SET_TO_USER, UNASSIGN_PERMISSION_SET_FROM_USER, UNKNOWN,
+SHOW_ALL_TEMPLATES, ASSIGN_TEMPLATE_TO_USER, UNASSIGN_TEMPLATE_FROM_USER, DELETE_TEMPLATE
 
 INTENTS:
 
+- SHOW_ALL_TEMPLATES: show/list/see/display all templates/checklist/forms/
+- ASSIGN_TEMPLATE_TO_USER: assign/give/allot template/checklist/form to user/employee/staff/person/man
+- UNASSIGN_TEMPLATE_FROM_USER: remove/take/unassign/revoke template/checklist/form from user/employee/staff/person/man
 - VIEW_PERMISSION_SETS: show/list/see permissions/roles/access
 - ASSIGN_PERMISSION_SET_TO_USER: give/assign permissions/roles/access to user/employee
 - UNASSIGN_PERMISSION_SET_FROM_USER: remove/take permissions/roles/access from user/employee
+- DELETE_TEMPLATE: delete/remove template/checklist/form
 - CREATE_SITE: create/add/make/new/open site/office/location/branch
 - DELETE_SITE: delete/remove/close site/office/location/branch
 - VIEW_SITES: show/list/see/get all sites/offices/locations/branches
@@ -374,15 +401,17 @@ INTENTS:
 - CREATE_USER: create/add/make/new user/employee/account/person
 - DELETE_USER: delete/remove user/employee/account/person
 - VIEW_USERS: show/list/see/get all users/employees/accounts/people
-- UNKNOWN: hello/hi/chat/help/other topics
+- UNKNOWN: hello/hi/chat/help/other topics/ about the platform
 
 RULES:
 1. If message contains "permission/role/access" + "assign/give" → ASSIGN_PERMISSION_SET_TO_USER
 2. If message contains "permission/role/access" + "remove/revoke" → UNASSIGN_PERMISSION_SET_FROM_USER
 3. If message contains "user" + "to" + "site/office" → ASSIGN_USERS_TO_SITE
-4. Look for key action words: create, delete, view, assign, remove
-5. If unsure, return UNKNOWN
-CRITICAL: Return ONLY the intent name (e.g., "CREATE_SITE" or "UNKNOWN"). No explanations, no other text.
+4. If message contains "show","display","list","see"+ "template","forms" → SHOW_ALL_TEMPLATES
+5. If message contains "remove" + "template" → DELETE_TEMPLATE
+6. Look for key action words: create, delete, view, assign, remove
+7. If unsure, return UNKNOWN
+CRITICAL: Return ONLY the intent name from the list of valid intents (e.g., "CREATE_SITE" or "UNKNOWN"). No explanations, no other text.
 """
 
     try:
@@ -584,6 +613,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
         initialize_ollama_site_manager()
         initialize_ollama_user_manager()
         initialize_ollama_permission_manager()
+        initialize_ollama_template_manager()
         print("in execute")
         operation_type = operation_data.get("operation_type")
         data = operation_data.get("data", {})
@@ -685,7 +715,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
             return {
                 "success": True,
                 "message": f"✅ Users assigned to site '{location_name}' successfully!",
-                "data": result
+                "data": {result}
             }
         
         elif operation_type == "UNASSIGN_USERS_FROM_SITE":
@@ -727,7 +757,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
             return {
                 "success": True,
                 "message": f"✅ Users unassigned from site '{location_name}' successfully!",
-                "data": result
+                "data": {"user_ids": user_ids}
             }
          
         elif operation_type == "CREATE_USER":
@@ -747,7 +777,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
             return {
                 "success": True,
                 "message": f"✅ User '{first_name} {last_name}' created successfully!",
-                "data": result
+                "data": {result}
             }
 
         elif operation_type == "DELETE_USER":
@@ -761,7 +791,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
                 return {
                     "success": True,
                     "message": f"✅ User '{full_name}' deleted successfully!",
-                    "data": result
+                    "data": {"user_id": id}
                 }
             else:
                 return {
@@ -842,7 +872,115 @@ async def execute_site_operation(operation_data: dict) -> dict:
             return {
                 "success": True,
                 "message": f"✅ Permission sets {action} user '{full_name}' successfully!",
-                "data": result
+                "data": {"permission_set_ids": permission_set_ids}
+            }
+
+        elif operation_type == "SHOW_ALL_TEMPLATES":
+            templates = ollama_template_manager.get_all_templates() or []   # directly get list
+
+            if templates:
+                template_list = "\n".join([
+                    f"• {template.get('name', '')} (By : {template.get('created_by', '')})"
+                    for template in templates
+                ])
+                message = f"📄 Found {len(templates)} templates:\n{template_list}"
+            else:
+                message = "📄 No templates found"
+
+            return {
+                "success": True,
+                "message": message,
+                "data": {"templates": templates}   # wrap list in a dict for consistency
+            }
+
+        elif operation_type == "DELETE_TEMPLATE":
+            template_name = data.get("template_name")
+
+            # Find template ID
+            template_id = ollama_template_manager.get_template_id_by_name(template_name)
+            print("Template ID: ", template_id)
+            if not template_id:
+                return {
+                    "success": False,
+                    "message": f"❌ Template '{template_name}' not found",
+                    "data": {"error": "Template not found"}
+                }
+
+            result = ollama_template_manager.delete_template(template_id)
+            print("Delete Template Result: ", result)
+            return {
+                "success": True,
+                "message": f"✅ Template '{template_name}' deleted successfully!",
+                "data": {"template_id": template_id}
+            }
+        
+        elif operation_type == "ASSIGN_TEMPLATE_TO_USER":
+            full_name = data.get("user_name")
+            template_names = data.get("template_name", [])
+
+            # Find user ID
+            user_id = ollama_user_manager.get_user_by_name(full_name)
+            print("user ID: ", user_id)
+            if not user_id:
+                return {
+                    "success": False,
+                    "message": f"❌ User '{full_name}' not found",
+                    "data": {"error": "User not found"}
+                }
+
+            # Get template IDs
+            template_ids = []
+            for template_name in template_names:
+                template_id = ollama_template_manager.get_assign_user_template_id_by_name(template_name,user_id)
+                if template_id:
+                    template_ids.append(template_id)
+            print("template ids: ", template_ids)
+            if not template_ids:
+                return {
+                    "success": False,
+                    "message": f"❌ None of the specified templates were found: {', '.join(template_names)}",
+                    "data": {"error": "Templates not found"}
+                }
+
+            result = ollama_template_manager.assign_templates_to_user(user_id, template_ids)
+            return {
+                "success": True,
+                "message": f"✅ Templates assigned to user '{full_name}' successfully!",
+                "data": {"template_ids": template_ids}
+            }
+
+        elif operation_type == "UNASSIGN_TEMPLATE_FROM_USER":
+            full_name = data.get("user_name")
+            template_names = data.get("template_name", [])
+
+            # Find user ID
+            user_id = ollama_user_manager.get_user_by_name(full_name)
+            if not user_id:
+                return {
+                    "success": False,
+                    "message": f"❌ User '{full_name}' not found",
+                    "data": {"error": "User not found"}
+                }
+
+            # Get template IDs
+            template_ids = []
+            for template_name in template_names:
+                template_id = ollama_template_manager.get_assign_user_template_id_by_name(template_name,user_id)
+                if template_id:
+                    template_ids.append(template_id)
+
+            if not template_ids:
+                return {
+                    "success": False,
+                    "message": f"❌ None of the specified templates were found: {', '.join(template_names)}",
+                    "data": {"error": "Templates not found"}
+                }
+
+            result = ollama_template_manager.unassign_templates_from_user(user_id, template_ids)
+            return {
+                "success": True,
+                "message": f"✅ Templates unassigned from user '{full_name}' successfully!",
+                "data": {"template_ids": template_ids}
             }
 
         else:
