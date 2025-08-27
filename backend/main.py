@@ -438,14 +438,24 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str)
     # formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list,all_permission_sets_list=permission_set_list)
     
     # Create full prompt for Phase 1
-    full_prompt = f"""{new_prompt}
+    full_prompt = f"""
+You are PulsePro AI Assistant.
+
+====================CORE RULES====================
+• Handle ONLY PulsePro operations as specified for this task
+• Ignore unrelated queries. Reply: "I can only help with PulsePro operations."
+• Ask for missing information. Never assume values.
+• If user says cancel/stop/exit/abort/halt/quit/terminate/end, reply: "Operation cancelled. No action taken."
+• When you have all required data, ask: "I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================CONVERSATION HISTORY====================
 {conversation_history}
 
+====================Follow the instructions below and keep the CONVERSATION HISTORY in mind====================
+{new_prompt}
+
 ====================CURRENT USER MESSAGE====================
 {user_message}
-
 ====================YOUR RESPONSE===================="""
     print("New prompt: ",full_prompt)
 
@@ -456,7 +466,7 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str)
         prompt=full_prompt,
         options={
             "num_predict": 450,
-            "temperature": 0.5
+            "temperature": 0.50
         }
     )
     
