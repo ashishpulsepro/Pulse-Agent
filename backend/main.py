@@ -355,8 +355,9 @@ async def execute_phase_0(session_id: str, user_message: str, client) -> str:
     # Get conversation history from MongoDB (optimized - only recent messages)
     db_messages = get_conversation_from_db(session_id)
     conversation_history = "\n".join([
-        f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['message']}"
-        for msg in db_messages[-5:]  # Only last 5 messages for efficiency
+    f"User: {msg['message']}"
+    for msg in db_messages[-5:]  # Last 5 messages
+    if msg['role'] == 'user'  # Only user messages
     ])
     
     # Valid intents list
@@ -366,13 +367,14 @@ async def execute_phase_0(session_id: str, user_message: str, client) -> str:
         "CREATE_USER", "DELETE_USER", "VIEW_USERS", 
         "VIEW_PERMISSION_SETS", "ASSIGN_PERMISSION_SET_TO_USER", 
         "UNASSIGN_PERMISSION_SET_FROM_USER",
-        "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", "DELETE_TEMPLATE"
+        "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", 
+        "DELETE_TEMPLATE","UNKNOWN"
     ]
     
     # Improved intent detection prompt
     intent_prompt = f"""You are a PulsePro intent classifier.
 
-ANALYZE the user message and conversation history to determine the user's intent.
+ANALYZE the user message and conversation history to determine the user's intent. Focus on the most RECENT user message. that means the last message from the user in the conversation history.
 
 USER MESSAGE: "{user_message}"
 
@@ -380,9 +382,8 @@ CONVERSATION HISTORY:
 {conversation_history}
 
 ONLY VALID INTENTS:
-CREATE_SITE, DELETE_SITE, VIEW_SITES, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, CREATE_USER, DELETE_USER, VIEW_USERS,
-VIEW_PERMISSION_SETS, ASSIGN_PERMISSION_SET_TO_USER, UNASSIGN_PERMISSION_SET_FROM_USER, UNKNOWN,
-SHOW_ALL_TEMPLATES, ASSIGN_TEMPLATE_TO_USER, UNASSIGN_TEMPLATE_FROM_USER, DELETE_TEMPLATE
+{valid_intents}
+
 
 INTENTS:
 
@@ -481,6 +482,7 @@ You are PulsePro AI Assistant.
 {conversation_history}
 
 ====================Follow the instructions below and keep the CONVERSATION HISTORY in mind====================
+
 {new_prompt}
 
 ====================CURRENT USER MESSAGE====================
@@ -568,7 +570,7 @@ async def execute_phase_2(session_id: str, client, intent) -> ChatResponse:
         print("operation data : ", operation_data)
         
         # Execute the operation
-        execution_result = await execute_site_operation(operation_data)
+        execution_result = await execute_site_operation(operation_data,session_id)
         
         # Clear conversation after execution
         clear_conversation_from_db(session_id)
@@ -606,7 +608,7 @@ async def execute_phase_2(session_id: str, client, intent) -> ChatResponse:
             data={}
         )
 
-async def execute_site_operation(operation_data: dict) -> dict:
+async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
     """Execute the site operation based on JSON data"""
     
     try:
@@ -984,6 +986,7 @@ async def execute_site_operation(operation_data: dict) -> dict:
             }
 
         else:
+            clear_conversation_from_db(session_id)
             return {
                 "success": False,
                 "message": f"❌ Unknown operation: {operation_type}",
