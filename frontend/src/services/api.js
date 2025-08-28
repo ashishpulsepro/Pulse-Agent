@@ -63,7 +63,7 @@ class ApiService {
   }
 
   async testOllamaConnection() {
-    return this.request("/ollama/test");
+    return this.request("/ai/test");
   }
 
   // System status

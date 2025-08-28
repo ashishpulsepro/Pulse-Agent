@@ -44,16 +44,20 @@ ollama_config = OllamaConfig()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("Starting PulsePro Site Management API with Ollama Integration...")
-    print(f"Ollama model: {ollama_config.model_name}")
+    ai_type = "Gemini" if USE_GEMINI else "Ollama" 
+    print(f"Starting PulsePro Site Management API with {ai_type} Integration...")
+    if USE_GEMINI:
+        print("🔥 Using Gemini 2.0 Flash model")
+    else:
+        print(f"🦙 Using Ollama model: {ollama_config.model_name}")
     yield
     # Shutdown
     print("Shutting down PulsePro Site Management API...")
 
 app = FastAPI(
-    title="PulsePro Site Management API with Ollama",
-    description="AI-powered conversational site management system using Ollama llama3.1:8b",
-    version="2.0.0",
+    title="PulsePro Site Management API with AI",
+    description="AI-powered conversational site management system using Gemini or Ollama",
+    version="3.0.0",
     lifespan=lifespan
 )
 
@@ -160,7 +164,15 @@ def initialize_ollama_template_manager():
 
 
 
-import ollama
+try:
+    # Try to import Gemini first, fallback to Ollama
+    from gemini_client import GeminiClient
+    USE_GEMINI = True
+except ImportError:
+    print("⚠️ Gemini not available, using Ollama")
+    import ollama
+    USE_GEMINI = False
+
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -168,17 +180,27 @@ from typing import Dict, List, Optional
 # Global storage for chat sessions (in production, use Redis or database)
 chat_sessions: Dict[str, List[Dict]] = {}
 
-def get_ollama_client():
-    """Get Ollama client - simple dependency"""
+def get_ai_client():
+    """Get AI client - Gemini or Ollama"""
     try:
-        client = ollama.Client(host='http://localhost:11434')
-        # Quick test to ensure connection
-        client.list()
-        return client
+        if USE_GEMINI:
+            client = GeminiClient()
+            # Test connection
+            if client.test_connection():
+                return client
+            else:
+                raise Exception("Gemini connection test failed")
+        else:
+            # Fallback to Ollama
+            client = ollama.Client(host='http://localhost:11434')
+            # Quick test to ensure connection
+            client.list()
+            return client
     except Exception as e:
+        ai_type = "Gemini" if USE_GEMINI else "Ollama"
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Ollama service unavailable: {str(e)}"
+            detail=f"{ai_type} service unavailable: {str(e)}"
         )
 
 
@@ -301,7 +323,7 @@ async def chat_with_agent(chat_request: ChatRequest):
     print(f"Session ID: {session_id}, Intent initial: {intent}")
     
     try:
-        client = get_ollama_client()
+        client = get_ai_client()
         
         # Initialize session (MongoDB-based)
         if session_id not in chat_sessions:
@@ -359,7 +381,7 @@ async def execute_phase_0(session_id: str, user_message: str, client) -> str:
     for msg in db_messages[-5:]  # Last 5 messages
     if msg['role'] == 'user'  # Only user messages
     ])
-    
+    status = "intent-detection"
     # Valid intents list
     valid_intents = [
         "CREATE_SITE", "DELETE_SITE", "VIEW_SITES", 
@@ -414,11 +436,13 @@ RULES:
 7. If unsure, return UNKNOWN
 CRITICAL: Return ONLY the intent name from the list of valid intents (e.g., "CREATE_SITE" or "UNKNOWN"). No explanations, no other text.
 """
+    
+    model_name = "gemini-2.0-flash" if USE_GEMINI else "llama3.1:8b"
 
     try:
         # Get response from LLM with optimized settings
         response = client.generate(
-            model="llama3.1:8b",
+            model=model_name,
             prompt=intent_prompt,
             options={
                 "num_predict": 17,  # Sufficient for intent name
@@ -492,8 +516,9 @@ You are PulsePro AI Assistant.
 
     print("into llm now")
     # Get response from LLM
+    model_name = "gemini-2.0-flash" if USE_GEMINI else "llama3.1:8b"
     response = client.generate(
-        model="llama3.1:8b",
+        model=model_name,
         prompt=full_prompt,
         options={
             "num_predict": 450,
@@ -547,8 +572,9 @@ async def execute_phase_2(session_id: str, client, intent) -> ChatResponse:
         print("Phase 2 prompt: ",phase_2_prompt)
         
         # Get JSON response from LLM
+        model_name = "gemini-2.0-flash" if USE_GEMINI else "llama3.1:8b"
         response = client.generate(
-            model="llama3.1:8b",
+            model=model_name,
             prompt=phase_2_prompt,
             options={
                 "num_predict": 500,
@@ -1067,11 +1093,12 @@ async def clear_chat_session(session_id: str):
 async def chat_health_check():
     """Check if chat system is ready"""
     try:
-        client = get_ollama_client()
+        client = get_ai_client()
         
         # Quick test
+        model_name = "gemini-2.0-flash" if USE_GEMINI else "llama3.1:8b"
         response = client.generate(
-            model="llama3.1:8b",
+            model=model_name,
             prompt="Say 'OK'",
             options={"num_predict": 5}
         )
@@ -1138,23 +1165,29 @@ async def enhanced_health_check():
 
 @app.get("/health")
 async def enhanced_health_check():
-    """Enhanced health check with Ollama model status"""
+    """Enhanced health check with AI model status"""
     
     global ollama_site_manager
     
-    # Test Ollama connection
-    ollama_status = "not_tested"
+    # Test AI connection
+    ai_status = "not_tested"
     if ollama_site_manager:
-        ollama_status = "connected" if ollama_site_manager.conversational_agent.ollama_client else "fallback_mode"
+        try:
+            client = get_ai_client()
+            ai_status = "connected"
+        except:
+            ai_status = "fallback_mode"
     
+    ai_type = "Gemini" if USE_GEMINI else "Ollama"
     health_status = {
         "status": "healthy",
-        "service": "PulsePro Site Management API with Ollama",
+        "service": f"PulsePro Site Management API with {ai_type}",
         "timestamp": datetime.now().isoformat(),
         "components": {
             "api": "healthy",
             "authentication": "healthy" if ollama_site_manager else "not_initialized",
-            "ollama_model": ollama_status,
+            "ai_model": ai_status,
+            "ai_type": ai_type,
             "conversational_ai": "available" if ollama_site_manager else "not_available"
         }
     }
@@ -1225,131 +1258,161 @@ async def internal_error_handler(request, exc):
 # ============================================
 
 
-# Test Ollama connection endpoint
-@app.get("/ollama/test", response_model=StandardResponse)
-async def test_ollama_connection():
-    """Test Ollama connection and model availability"""
+# Test AI connection endpoint
+@app.get("/ai/test", response_model=StandardResponse)
+async def test_ai_connection():
+    """Test AI connection and model availability"""
     try:
-        import ollama
-        
-        # Try to create client with explicit host (adjust if needed)
-        client = ollama.Client(host='http://localhost:11434')
-        
-        # Test basic connection first
-        try:
-            models = client.list()
+        if USE_GEMINI:
+            client = GeminiClient()
             
-            # Handle the models response properly
-            available_models = []
-            if hasattr(models, 'models'):
-                # Handle case where models is an object with models attribute
-                model_list = models.models
-            elif isinstance(models, dict) and 'models' in models:
-                # Handle case where models is a dict with models key
-                model_list = models['models']
-            else:
-                # Handle other cases
-                model_list = models if isinstance(models, list) else [models]
-            
-            # Extract model names
-            for model in model_list:
-                if hasattr(model, 'model'):
-                    # Handle model objects with model attribute
-                    available_models.append(model.model)
-                elif hasattr(model, 'name'):
-                    # Handle model objects with name attribute
-                    available_models.append(model.name)
-                elif isinstance(model, dict):
-                    # Handle dict models
-                    name = model.get('model') or model.get('name') or model.get('id')
-                    if name:
-                        available_models.append(name)
-                else:
-                    # Fallback to string representation
-                    available_models.append(str(model))
-        except Exception as list_error:
-            return StandardResponse(
-                success=False,
-                message="Failed to list models from Ollama",
-                data={
-                    "error": str(list_error),
-                    "suggestions": [
-                        "Check if Ollama is running: ollama serve",
-                        "Verify Ollama is accessible at http://localhost:11434",
-                        "Try: curl http://localhost:11434/api/tags"
-                    ]
-                }
-            )
-        
-        # Test llama3.1:8b specifically
-        model_available = "llama3.1:8b" in available_models
-        
-        if model_available:
-            try:
-                # Test generation with timeout
-                response = client.generate(
-                    model="llama3.1:8b",
-                    prompt="who was the first president of the united states?",
-                    options={"num_predict": 500}
-                )
-
-                print(f"Test response: {response['response']}")
-                
+            # Test connection
+            if client.test_connection():
                 return StandardResponse(
                     success=True,
-                    message="Ollama connection successful",
+                    message="Gemini connection successful",
                     data={
-                        "available_models": available_models,
-                        "target_model": "llama3.1:8b",
-                        "model_status": "available",
-                        "test_response": response['response']
+                        "ai_type": "Gemini",
+                        "model": "gemini-2.0-flash",
+                        "status": "available"
                     }
                 )
-            except Exception as gen_error:
+            else:
                 return StandardResponse(
                     success=False,
-                    message="Model found but generation failed",
+                    message="Gemini connection failed",
                     data={
-                        "available_models": available_models,
-                        "target_model": "llama3.1:8b",
-                        "model_status": "available_but_failed",
-                        "error": str(gen_error),
-                        "suggestion": "Model may be corrupted, try: ollama pull llama3.1:8b"
+                        "ai_type": "Gemini",
+                        "error": "Connection test failed",
+                        "suggestion": "Check your GEMINI_API_KEY environment variable"
                     }
                 )
         else:
-            return StandardResponse(
-                success=False,
-                message="llama3.1:8b model not found",
-                data={
-                    "available_models": available_models,
-                    "target_model": "llama3.1:8b",
-                    "model_status": "not_found",
-                    "suggestion": "Run: ollama pull llama3.1:8b"
-                }
-            )
+            import ollama
+            
+            # Try to create client with explicit host (adjust if needed)
+            client = ollama.Client(host='http://localhost:11434')
+            
+            # Continue with Ollama testing
+            # Test basic connection first
+            try:
+                models = client.list()
+                
+                # Handle the models response properly
+                available_models = []
+                if hasattr(models, 'models'):
+                    # Handle case where models is an object with models attribute
+                    model_list = models.models
+                elif isinstance(models, dict) and 'models' in models:
+                    # Handle case where models is a dict with models key
+                    model_list = models['models']
+                else:
+                    # Handle other cases
+                    model_list = models if isinstance(models, list) else [models]
+                
+                # Extract model names
+                for model in model_list:
+                    if hasattr(model, 'model'):
+                        # Handle model objects with model attribute
+                        available_models.append(model.model)
+                    elif hasattr(model, 'name'):
+                        # Handle model objects with name attribute
+                        available_models.append(model.name)
+                    elif isinstance(model, dict):
+                        # Handle dict models
+                        name = model.get('model') or model.get('name') or model.get('id')
+                        if name:
+                            available_models.append(name)
+                    else:
+                        # Fallback to string representation
+                        available_models.append(str(model))
+            except Exception as list_error:
+                return StandardResponse(
+                    success=False,
+                    message="Failed to list models from Ollama",
+                    data={
+                        "error": str(list_error),
+                        "suggestions": [
+                            "Check if Ollama is running: ollama serve",
+                            "Verify Ollama is accessible at http://localhost:11434",
+                            "Try: curl http://localhost:11434/api/tags"
+                        ]
+                    }
+                )
+            
+            # Test llama3.1:8b specifically
+            model_available = "llama3.1:8b" in available_models
+            
+            if model_available:
+                try:
+                    # Test generation with timeout
+                    response = client.generate(
+                        model="llama3.1:8b",
+                        prompt="who was the first president of the united states?",
+                        options={"num_predict": 500}
+                    )
+
+                    print(f"Test response: {response['response']}")
+                    
+                    return StandardResponse(
+                        success=True,
+                        message="Ollama connection successful",
+                        data={
+                            "ai_type": "Ollama",
+                            "available_models": available_models,
+                            "target_model": "llama3.1:8b",
+                            "model_status": "available",
+                            "test_response": response['response']
+                        }
+                    )
+                except Exception as gen_error:
+                    return StandardResponse(
+                        success=False,
+                        message="Model found but generation failed",
+                        data={
+                            "ai_type": "Ollama",
+                            "available_models": available_models,
+                            "target_model": "llama3.1:8b",
+                            "model_status": "available_but_failed",
+                            "error": str(gen_error),
+                            "suggestion": "Model may be corrupted, try: ollama pull llama3.1:8b"
+                        }
+                    )
+            else:
+                return StandardResponse(
+                    success=False,
+                    message="llama3.1:8b model not found",
+                    data={
+                        "ai_type": "Ollama",
+                        "available_models": available_models,
+                        "target_model": "llama3.1:8b",
+                        "model_status": "not_found",
+                        "suggestion": "Run: ollama pull llama3.1:8b"
+                    }
+                )
             
     except ImportError:
         return StandardResponse(
             success=False,
-            message="Ollama Python package not installed",
+            message="AI package not installed",
             data={
-                "error": "ImportError: ollama module not found",
-                "suggestion": "Install with: pip install ollama"
+                "error": "ImportError: Required AI package not found",
+                "suggestion": "Install with: pip install google-generativeai (for Gemini) or pip install ollama (for Ollama)"
             }
         )
     except Exception as e:
+        ai_type = "Gemini" if USE_GEMINI else "Ollama"
         return StandardResponse(
             success=False,
-            message="Ollama connection failed",
+            message=f"{ai_type} connection failed",
             data={
                 "error": str(e),
                 "error_type": type(e).__name__,
+                "ai_type": ai_type,
                 "suggestions": [
-                    "Make sure Ollama is running: ollama serve",
-                    "Check if port 11434 is accessible",
-                    "Verify Ollama installation: ollama --version",
-                    "Try manual test: curl http://localhost:11434/api/tags"
+                    "Check your API key environment variable" if USE_GEMINI else "Make sure Ollama is running: ollama serve",
+                    "Check if required packages are installed",
+                    "Verify your configuration"
                 ]
             }
         )
