@@ -181,6 +181,27 @@ def get_ollama_client():
             detail=f"Ollama service unavailable: {str(e)}"
         )
 
+import os
+from dotenv import load_dotenv
+from fastapi import HTTPException, status
+import google.generativeai as genai
+
+load_dotenv()
+
+def get_gemini_client():
+    """Get Gemini client - simple dependency"""
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("Gemini API key not found in environment variables")
+        
+        genai.configure(api_key=api_key)
+        return genai
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Gemini service unavailable: {str(e)}"
+        )
 
 
 
@@ -302,6 +323,10 @@ async def chat_with_agent(chat_request: ChatRequest):
     
     try:
         client = get_ollama_client()
+
+        # client_gemini = get_gemini_client()
+        # model = client.GenerativeModel("gemini-2.5-pro")
+
         
         # Initialize session (MongoDB-based)
         if session_id not in chat_sessions:
@@ -717,7 +742,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             return {
                 "success": True,
                 "message": f"✅ Users assigned to site '{location_name}' successfully!",
-                "data": {result}
+                "data": result
             }
         
         elif operation_type == "UNASSIGN_USERS_FROM_SITE":
@@ -779,7 +804,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             return {
                 "success": True,
                 "message": f"✅ User '{first_name} {last_name}' created successfully!",
-                "data": {result}
+                "data": result
             }
 
         elif operation_type == "DELETE_USER":

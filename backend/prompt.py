@@ -173,7 +173,7 @@ Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execut
 ====================INSTRUCTIONS====================
 • Ask for the site name/location if not provided
 • Confirm when you have the location_name
-• Wait for 'Proceed' confirmation before executing
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the location_nam
 Try to avoid asking for the same information multiple times.// follow the conversation history below to avoid repetition
 
 
@@ -205,7 +205,7 @@ Assistant: "Great! I have all the information needed. Type 'Proceed' to execute 
 • Show available sites list when asking which site to delete
 • Ask for the specific site name if not provided
 • Confirm when you have the location_name
-• Wait for 'Proceed' confirmation before executing
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the location_name
 Try to avoid asking for the same information multiple times.// follow the conversation history below to avoid repetition
 
 
@@ -229,6 +229,7 @@ Assistant: "Great! I have all the information needed. Type 'Proceed' to execute 
 • Ask for site name first, then user names
 • Accept multiple user names as a list
 • Confirm when you have both location_name and user_names
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the user names
 • Wait for 'Proceed' confirmation before executing
 Try to avoid asking for the same information multiple times.// follow the conversation history below to avoid repetition
 
@@ -254,6 +255,7 @@ Assistant: "Great! I have all the information needed. Type 'Proceed' to execute 
 • Ask for site name first, then user names
 • Accept multiple user names as a list
 • Confirm when you have both location_name and user_names
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the user names
 • Wait for 'Proceed' confirmation before executing
 Try to avoid asking for the same information multiple times.// follow the conversation history below to avoid repetition
 
@@ -281,7 +283,7 @@ Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execut
 • Ask for first_name, last_name, email, and permission_set in sequence
 • Must Show available permission sets when you will be asking for permission_set that is "Which permission set?"
 • Confirm when you have all four required fields
-• Wait for 'Proceed' confirmation before executing
+- Must ask Type 'Proceed' to execute this operation at the last step after getting the permission set
 • Please follow the conversation between User and Assistant mentioned below as conversation history and then proceed to ask for missing information
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
@@ -301,7 +303,7 @@ Assistant: "Great! I have all the information needed. Type 'Proceed' to execute 
 • Show available users list when asking which user to delete only once // follow the conversation history below to avoid repetition
 • Ask for the full name of the user // follow the conversation history below to avoid repetition
 • Confirm when you have the full_name
-• Wait for 'Proceed' confirmation before executing
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the full_name
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
 Available Users: {users_formatted}
@@ -316,8 +318,7 @@ Assistant: "Great! Type 'Proceed' to execute this operation."
 
 ====================INSTRUCTIONS====================
 • No additional data needed
-• Immediately ask for 'Proceed' confirmation
-
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
 """,
 
         'VIEW_PERMISSION_SETS': BASE_RULES + """====================VIEW PERMISSION SETS OPERATION====================
@@ -329,7 +330,8 @@ Assistant: "Great! Type 'Proceed' to execute this operation."
 
 ====================INSTRUCTIONS====================
 • No additional data needed
-• Immediately ask for 'Proceed' confirmation
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+
 
 """,
 
@@ -341,16 +343,16 @@ User: "Assign permission set to user"
 Assistant: "Which user? Available users: {users_formatted}"
 User: "Ashish Saw"
 Assistant: "Which permission set? Mention the names \n Available sets: {permissions_formatted}"
-User: "Field User"
+User: "Field User"// could be single or multiple
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================INSTRUCTIONS====================
 • Show available users list when asking which user
 • Show available permission sets when asking which permission set
 • Ask for user name first, then permission sets
-• Accept multiple permission sets as a list
+• Accept multiple permission sets 
 • Confirm when you have both user_name and permission_sets
-• Wait for 'Proceed' confirmation before executing
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the permission sets
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
 Available Users: {users_formatted}
@@ -372,9 +374,9 @@ Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execut
 • Show available users list when asking which user
 • Show available permission sets when asking which permission set
 • Ask for user name first, then permission sets
-• Accept multiple permission sets as a list
+• Accept multiple permission sets 
 • Confirm when you have both user_name and permission_sets
-• Wait for 'Proceed' confirmation before executing
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the permission sets
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
 Available Users: {users_formatted}
@@ -390,7 +392,7 @@ Assistant: "Great! Type 'Proceed' to execute this operation."
 
 ====================INSTRUCTIONS====================
 • No additional data needed
-• Immediately ask for 'Proceed' confirmation
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
 
 """,
 
@@ -407,7 +409,7 @@ Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execut
 • Show available templates when asking which template
 • Ask for template ID
 • Confirm when you have template_id
-• Wait for 'Proceed' confirmation before executing
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the template_id
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
 Available Templates: {templates_formatted}
@@ -427,8 +429,8 @@ Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execut
 • Show available users when asking which user
 • Show available templates when asking which template
 • Ask for user name first, then template
-• Confirm when you have user_name and template_name 
-• Wait for 'Proceed' confirmation before executing
+• Confirm when you have user_name and template_names
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the template_names
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
 Available Users: {users_formatted}
@@ -450,8 +452,8 @@ Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execut
 • Show available users when asking which user
 • Show available templates when asking which template
 • Ask for user name first, then template
-• Confirm when you have user_name and template_name
-• Wait for 'Proceed' confirmation before executing
+• Confirm when you have user_name and template_names
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the template_names
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
 Available Users: {users_formatted}
