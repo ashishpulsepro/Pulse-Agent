@@ -188,20 +188,50 @@ import google.generativeai as genai
 
 load_dotenv()
 
-def get_gemini_client():
-    """Get Gemini client - simple dependency"""
-    try:
+import google.generativeai as genai
+
+def get_gemini_client(
+    model: str = "gemini-2.5-flash",
+    temperature: float = 0.2,
+    max_output_tokens: int = 512,
+    top_p: float = 0.95,
+    api_key: str = None
+):
+    """
+    Initializes and returns a Gemini model client with the given config.
+
+    Args:
+        model (str): The Gemini model to use.
+        temperature (float): Controls randomness (higher = more creative).
+        max_output_tokens (int): Max tokens in output.
+        top_p (float): Nucleus sampling value.
+        api_key (str): Your Google API key. If None, expects env variable GOOGLE_API_KEY.
+
+    Returns:
+        genai.GenerativeModel: Configured Gemini client.
+    """
+    
+    if api_key is None:
+        import os
         api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("Gemini API key not found in environment variables")
-        
-        genai.configure(api_key=api_key)
-        return genai
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Gemini service unavailable: {str(e)}"
-        )
+
+    if not api_key:
+        raise ValueError("API key must be provided either via argument or GOOGLE_API_KEY env variable")
+
+    # Configure client
+    genai.configure(api_key=api_key)
+
+    # Initialize model
+    model_client = genai.GenerativeModel(
+        model,
+        generation_config={
+            "temperature": temperature,
+            "max_output_tokens": max_output_tokens,
+            "top_p": top_p,
+        },
+    )
+
+    return model_client
 
 
 
@@ -322,9 +352,9 @@ async def chat_with_agent(chat_request: ChatRequest):
     print(f"Session ID: {session_id}, Intent initial: {intent}")
     
     try:
-        client = get_ollama_client()
+        # client = get_ollama_client()
 
-        # client_gemini = get_gemini_client()
+        client = get_gemini_client()
         # model = client.GenerativeModel("gemini-2.5-pro")
 
         
@@ -336,7 +366,7 @@ async def chat_with_agent(chat_request: ChatRequest):
         save_conversation_to_db(session_id, "user", user_message, intent=intent)
 
         if intent == 'UNKNOWN':
-            intent = await execute_phase_0(session_id, user_message, client)
+            intent = await execute_phase_0(session_id, user_message)
             store_session_intent(session_id, intent)
             print(f"Intent after phase 0: {intent}")
         
@@ -354,7 +384,7 @@ async def chat_with_agent(chat_request: ChatRequest):
         
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
         if user_message.lower().strip() in execution_triggers:
-            return await execute_phase_2(session_id, client,intent)
+            return await execute_phase_2(session_id, intent)
         
         # Phase 1: Continue conversation
         print("Proceeding to Phase 1 chat...")
@@ -377,7 +407,7 @@ async def chat_with_agent(chat_request: ChatRequest):
 # Function to get formatted site list
 
 
-async def execute_phase_0(session_id: str, user_message: str, client) -> str:
+async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_client(temperature=0.1)) -> str:
     """Phase 0: Optimized Intent detection - returns only the intent string"""
 
     # Get conversation history from MongoDB (optimized - only recent messages)
@@ -445,20 +475,11 @@ CRITICAL: Return ONLY the intent name from the list of valid intents (e.g., "CRE
 
     try:
         # Get response from LLM with optimized settings
-        response = client.generate(
-            model="llama3.1:8b",
-            prompt=intent_prompt,
-            options={
-                "num_predict": 17,  # Sufficient for intent name
-                "temperature": 0.0,  # Maximum determinism
-                "top_p": 0.05,      # Very focused responses
-                "top_k": 10,        # Limit vocabulary
-                "stop": ["\n", ".", ",", " ", ":", ";"],
-                "repeat_penalty": 1.0   # Stop at first word
-            }
+        response = client.generate_content(
+           intent_prompt
         )
         
-        detected_intent = response['response'].strip().upper()
+        detected_intent = (response.text or "").strip().upper()
         print(f"Detected intent: {detected_intent}")
         
         # Validate intent and return
@@ -518,16 +539,11 @@ You are PulsePro AI Assistant.
 
     print("into llm now")
     # Get response from LLM
-    response = client.generate(
-        model="llama3.1:8b",
-        prompt=full_prompt,
-        options={
-            "num_predict": 450,
-            "temperature": 0.50
-        }
+    response = client.generate_content(
+        full_prompt
     )
     
-    ai_response = response['response'].strip()
+    ai_response = response.text.strip()
     
     # Save AI response to MongoDB
     save_conversation_to_db(session_id, "assistant", ai_response, intent=intent)
@@ -551,7 +567,7 @@ You are PulsePro AI Assistant.
         data={}
     )
 
-async def execute_phase_2(session_id: str, client, intent) -> ChatResponse:
+async def execute_phase_2(session_id: str,intent:str, client=get_gemini_client(temperature=0.05)) -> ChatResponse:
     """Phase 2: Generate JSON and execute operation"""
     
     try:
@@ -573,16 +589,11 @@ async def execute_phase_2(session_id: str, client, intent) -> ChatResponse:
         print("Phase 2 prompt: ",phase_2_prompt)
         
         # Get JSON response from LLM
-        response = client.generate(
-            model="llama3.1:8b",
-            prompt=phase_2_prompt,
-            options={
-                "num_predict": 500,
-                "temperature": 0.1  # Low temperature for precise JSON
-            }
+        response = client.generate_content(
+            phase_2_prompt
         )
         
-        json_response = response['response'].strip()
+        json_response = response.text.strip()
         
         # Clean and parse JSON
         if json_response.startswith('```'):
