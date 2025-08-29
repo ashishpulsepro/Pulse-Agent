@@ -135,7 +135,18 @@ def get_data_collection_prompt(operation_type):
     print("got the permission sets list: ", all_permission_sets_list)
     all_templates_list = ollama_template_manager.get_all_templates()
     print("got the templates list: ", all_templates_list)
-    # Convert lists to formatted strings for better display
+    all_industries_list = ollama_template_manager.get_industry_list()
+
+    all_templates_list=ollama_template_manager.get_all_ready_made_checklists()
+
+
+    template_suggestions_formatted= "\n".join(f"{template['name']}" for template in all_templates_list) if all_templates_list else "No templates available"
+    print("Template suggestions formatted: ", template_suggestions_formatted)
+    industries_formatted = "\n".join(
+    f"{industry['id']}. {industry['name']}" 
+    for industry in all_industries_list
+        )
+    print("Industries formatted: ", industries_formatted)
  # Safe site formatter
 
     sites_formatted =all_sites_list if all_sites_list else "No sites available"
@@ -460,6 +471,32 @@ Available Users: {users_formatted}
 Available Templates: {templates_formatted}
 """,
 
+
+'CREATE_TEMPLATE': f"""====================CREATE TEMPLATE OPERATION====================
+REQUIRED DATA: industry_name, template_name
+
+====================CONVERSATION FLOW====================
+User: "Create a template"
+Assistant: "Which industry best describes this template? Mention single name \n Available industries: {industries_formatted}"
+User:"Retail"
+Assistant: "Here are some template suggestions: \n  Please Select any one . Available Checklists : \n{template_suggestions_formatted}."
+User: Cleaning Checklist
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Only Show available industries, when asking which industry(strctly show those industries which are available as listed below)
+• Only Show available template, when asking which template(strictly show those templates which are available as listed below)
+• Ask for industry name first, then template name
+• Confirm when you have industry_name and template_name
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the template_name
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Industries: {industries_formatted}
+Available Template Suggestions: {template_suggestions_formatted}
+
+""",
+
+
         'UNKNOWN': f"""You are PulsePro AI Assistant.
 
 Hello! I'm your PulsePro AI Assistant, designed to help you manage your PulsePro system efficiently.
@@ -779,6 +816,22 @@ If conversation mentions unassigning template "Checklist 1" and "Checklist 2" fr
 
 Extract the user_name and template_name from the conversation and generate the JSON response.
 """,
+
+        'CREATE_TEMPLATE': BASE_RULES + """====================CREATE_TEMPLATE JSON GENERATION====================   
+
+REQUIRED DATA TO EXTRACT:
+- industry_name: Name of the industry
+- template_name: Name of the template to be created
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"industry_name": "INDUSTRYNAME", "template_name": "TEMPLATENAME"}, "operation_type": "CREATE_TEMPLATE"}
+
+EXAMPLE:
+If conversation mentions creating template "10 Point Hygiene Check" in "Food and Hospitality" industry, return:
+{"data": {"industry_name": "Food and Hospitality", "template_name": "10 Point Hygiene Check"}, "operation_type": "CREATE_TEMPLATE"}
+
+Extract the industry_name and template_name from the conversation and generate the JSON response.
+                 """
 
     }
     

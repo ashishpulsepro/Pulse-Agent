@@ -752,3 +752,117 @@ class TemplateManager:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to unassign templates from user: {e}")
             return False
+        
+
+
+    def get_industry_list(self) -> List[Dict[str, Any]]:
+        """Get list of industries"""
+        url = f"{self.base_url}/checklist/get_industry_list/"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            industries = [
+                {
+                    'id': industry.get('id'),
+                    'name': industry.get('name')
+                } 
+                for industry in data
+            ]
+            logger.info(f"Retrieved {len(industries)} industries")
+            return industries
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get industries: {e}")
+            raise PulseProAPIException(f"Failed to retrieve industries: {e}")
+        
+
+    def get_industry_id_by_name(self, industry_name: str) -> Optional[int]:
+        """Get industry ID by name"""
+        industries = self.get_industry_list()
+        for industry in industries:
+            if industry['name'].lower() == industry_name.lower():
+                return industry['id']
+        return None
+
+
+
+    def get_checklist_industry_wise(self, industry_id: int) -> List[Dict[str, Any]]:
+        """Get checklists by industry ID"""
+        url = f"{self.base_url}/checklist/get_checklist_industry_wise/"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers,json={"industry_id":industry_id})
+            response.raise_for_status()
+
+            data = response.json()
+            checklists = [
+                {
+                    'id': checklist.get('id'),
+                    'name': checklist.get('checklist_name'),
+                    'industry_id': checklist.get('industry')
+                } 
+                for checklist in data.get('checklists', [])
+            ]
+            logger.info(f"Retrieved {len(checklists)} checklists for industry ID {industry_id}")
+            return checklists
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get checklists for industry ID {industry_id}: {e}")
+            raise PulseProAPIException(f"Failed to retrieve checklists: {e}")
+
+
+
+    def create_checklist(self, checklist_id: int) -> Dict[str, Any]:
+        """Save a new checklist"""
+        url = f"{self.base_url}/customer/get_checklist_convert_into_meta/{checklist_id}/"
+        headers = self._get_headers()
+
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            logger.info(f"Checklist  saved successfully")
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to save checklist '{checklist_id}': {e}")
+            raise PulseProAPIException(f"Checklist save failed: {e}")
+
+
+
+    def get_all_ready_made_checklists(self) -> List[Dict[str, Any]]:
+        """Get all checklists"""
+        url = f"{self.base_url}/checklist/get_checklist_industry_wise/"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            checklists = [
+                {
+                    'id': checklist.get('id'),
+                    'name': checklist.get('checklist_name'),
+                    'industry_id': checklist.get('industry')
+                } 
+                for checklist in data.get('checklists', [])
+            ]
+            logger.info(f"Retrieved {len(checklists)} checklists for all industries")
+            return checklists
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get checklists  : {e}")
+            raise PulseProAPIException(f"Failed to retrieve checklists: {e}")
+
+
+    def get_checklist_id_by_name(self, checklist_name: str) -> int:
+        """Get checklist details by ID"""
+        all_checklists = self.get_all_ready_made_checklists()
+        for checklist in all_checklists:
+            if checklist.get('name') == checklist_name:
+                return checklist.get('id')
+        return None

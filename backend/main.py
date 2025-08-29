@@ -371,6 +371,9 @@ async def chat_with_agent(chat_request: ChatRequest):
         )
 
 
+
+
+
 # Function to get formatted site list
 
 
@@ -392,7 +395,7 @@ async def execute_phase_0(session_id: str, user_message: str, client) -> str:
         "CREATE_USER", "DELETE_USER", "VIEW_USERS", 
         "VIEW_PERMISSION_SETS", "ASSIGN_PERMISSION_SET_TO_USER", 
         "UNASSIGN_PERMISSION_SET_FROM_USER",
-        "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", 
+        "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", "CREATE_TEMPLATE",
         "DELETE_TEMPLATE","UNKNOWN"
     ]
     
@@ -411,7 +414,7 @@ ONLY VALID INTENTS:
 
 
 INTENTS:
-
+- CREATE_TEMPLATE: create/add/make/new template/checklist/form
 - SHOW_ALL_TEMPLATES: show/list/see/display all templates/checklist/forms/
 - ASSIGN_TEMPLATE_TO_USER: assign/give/allot template/checklist/form to user/employee/staff/person/man
 - UNASSIGN_TEMPLATE_FROM_USER: remove/take/unassign/revoke template/checklist/form from user/employee/staff/person/man
@@ -471,8 +474,6 @@ import prompt
 # Updated execute_phase_1 function
 async def execute_phase_1(session_id: str, user_message: str, client,intent:str) -> ChatResponse:
     """Phase 1: Normal chat - Intent detection and data collection"""
-    initialize_ollama_site_manager()
-    initialize_ollama_permission_manager()
     # Get conversation history from MongoDB
     db_messages = get_conversation_from_db(session_id)
     conversation_history = ""
@@ -1009,6 +1010,26 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
                 "message": f"✅ Templates unassigned from user '{full_name}' successfully!",
                 "data": {"template_ids": template_ids}
             }
+        
+        elif operation_type == "CREATE_TEMPLATE":
+            template_name = data.get("template_name")
+            template_id= ollama_template_manager.get_checklist_id_by_name(template_name)
+
+            if not template_id:
+                return {
+                    "success": False,
+                    "message": f"❌ Template '{template_name}' does not exists. PLease select the right template name",
+                    "data": {"error": "Template already exists"}
+                }
+            
+            result=ollama_template_manager.create_checklist(template_id)
+            return{
+                "success": True,
+                "message": f"✅ Template '{template_name}' created successfully!",
+                "data": result
+            }
+
+
 
         else:
             clear_conversation_from_db(session_id)
