@@ -193,7 +193,7 @@ import google.generativeai as genai
 def get_gemini_client(
     model: str = "gemini-2.5-flash",
     temperature: float = 0.2,
-    max_output_tokens: int = 512,
+    max_output_tokens: int = 1512,
     top_p: float = 0.95,
     api_key: str = None
 ):
@@ -339,6 +339,22 @@ def store_session_intent(session_id, session_intent):
     except Exception as e:
         logger.error(f"Failed to update intent in MongoDB: {e}")
         return False
+
+
+def safe_extract_text(response):
+    try:
+        if response.candidates:
+            candidate = response.candidates[0]
+            if candidate.content and candidate.content.parts:
+                return candidate.content.parts[0].text
+        # fallback
+        return ""
+    except Exception as e:
+        print(f"Error extracting text: {e}")
+        return ""
+
+
+
 
         
 
@@ -542,14 +558,15 @@ You are PulsePro AI Assistant.
     response = client.generate_content(
         full_prompt
     )
-    
-    ai_response = response.text.strip()
+    print("response from llm: ",response)
+    ai_response = safe_extract_text(response).strip().upper() or "UNKNOWN"
+
     
     # Save AI response to MongoDB
     save_conversation_to_db(session_id, "assistant", ai_response, intent=intent)
     
     # Determine status
-    if "Type 'Proceed' to execute" in ai_response:
+    if "Type 'Proceed' to execute".lower() in ai_response.lower():
         status = "ready_for_execution"
     elif "I can only help with PulsePro Site operations" in ai_response:
         status = "off_topic"

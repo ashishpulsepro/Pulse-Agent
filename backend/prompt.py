@@ -137,11 +137,9 @@ def get_data_collection_prompt(operation_type):
     print("got the templates list: ", all_templates_list)
     all_industries_list = ollama_template_manager.get_industry_list()
 
-    all_templates_list=ollama_template_manager.get_all_ready_made_checklists()
+    all_templates_list_for_creation=ollama_template_manager.get_all_ready_made_checklists()
+    print("got the templates list for creation: ", all_templates_list_for_creation)
 
-
-    template_suggestions_formatted= "\n".join(f"{template['name']}" for template in all_templates_list) if all_templates_list else "No templates available"
-    print("Template suggestions formatted: ", template_suggestions_formatted)
     industries_formatted = "\n".join(
     f"{industry['id']}. {industry['name']}" 
     for industry in all_industries_list
@@ -150,20 +148,33 @@ def get_data_collection_prompt(operation_type):
  # Safe site formatter
 
     sites_formatted =all_sites_list if all_sites_list else "No sites available"
+    
+# Templates
+    templates_formatted = "\n".join(
+    f"{idx+1}. {template['name']} (ID: {template['id']})"
+    for idx, template in enumerate(all_templates_list)
+    ) if all_templates_list else "No templates available"
 
 # Users
-    users_formatted = "\n".join([
-        f"{idx+1}. {user}" for idx, user in enumerate(all_users_list)
-    ]) if all_users_list else "No users available"
+    users_formatted = "\n".join(
+    f"{idx+1}. {user['name']} (ID: {user['id']})"
+    for idx, user in enumerate(all_users_list)
+    ) if all_users_list else "No users available"
 
-    templates_formatted = "\n".join([
-        f"{idx+1}. {template}" for idx, template in enumerate(all_templates_list)
-    ]) if all_templates_list else "No templates available"
+# Templates for creation
+    templates_formatted_for_creation = "\n".join(
+    f"{idx+1}. {template['name']} (ID: {template['id']})"
+    for idx, template in enumerate(all_templates_list_for_creation)
+    ) if all_templates_list_for_creation else "No templates available"
 
 # Permission sets
-    permissions_formatted = "\n".join([
-        f"{idx+1}. {ps}" for idx, ps in enumerate(all_permission_sets_list)
-    ]) if all_permission_sets_list else "No permission sets available"
+    permissions_formatted = "\n".join(
+    f"{idx+1}. {ps['name']} (ID: {ps['id']})"
+    for idx, ps in enumerate(all_permission_sets_list)
+    ) if all_permission_sets_list else "No permission sets available"
+
+
+
     print("Formatted all data lists")
     # Base rules that apply to all operations
     BASE_RULES = """Remember You are PulsePro AI Assistant.Respond in a conversational manner while keeping the context in mind.
@@ -479,7 +490,7 @@ REQUIRED DATA: industry_name, template_name
 User: "Create a template"
 Assistant: "Which industry best describes this template? Mention single name \n Available industries: {industries_formatted}"
 User:"Retail"
-Assistant: "Here are some template suggestions: \n  Please Select any one . Available Checklists : \n{template_suggestions_formatted}."
+Assistant: "Here are some template suggestions: \n  Please Select any one . Available Checklists : \n{templates_formatted_for_creation}."
 User: Cleaning Checklist
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -492,52 +503,59 @@ Must ask for Type 'Proceed' to execute this operation at the last step after get
 Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
 
 Available Industries: {industries_formatted}
-Available Template Suggestions: {template_suggestions_formatted}
+Available Template Suggestions: {templates_formatted_for_creation}
 
 """,
 
 
         'UNKNOWN': f"""You are PulsePro AI Assistant.
-
 Hello! I'm your PulsePro AI Assistant, designed to help you manage your PulsePro system efficiently.
-
 ====================WHAT I CAN HELP YOU WITH====================
-
 🏢 SITE MANAGEMENT:
-• Create new sites/locations
-• View all existing sites
-• Delete sites
+- Create new sites/locations
+- View all existing sites
+- Delete sites
 
 👥 USER MANAGEMENT:
-• Create new users with permission sets
-• View all users
-• Delete users
+- Create new users with permission sets
+- View all users
+- Delete users
 
 🔗 USER-SITE ASSIGNMENTS:
-• Assign users to specific sites
-• Unassign users from sites
+- Assign users to specific sites
+- Unassign users from sites
 
 🔐 PERMISSION MANAGEMENT:
-• View available permission sets
-• Assign permission sets to users
-• Unassign permission sets from users
+- View available permission sets
+- Assign permission sets to users
+- Unassign permission sets from users
 
+📋 TEMPLATE MANAGEMENT:
+- View all available templates
+- Create new templates
+- Delete existing templates
+- Assign templates to users
+- Unassign templates from users
 
 ====================HOW TO GET STARTED====================
 Simply tell me what you'd like to do! For example:
-• "Create a new site"
-• "Show me all users"
-• "Assign John to the Mumbai office"
-• "Create a user"
-• "Delete a site"
+- "Create a new site"
+- "Show me all users"
+- "Assign John to the Mumbai office"
+- "Create a user"
+- "Delete a site"
+- "Show all templates"
+- "Create a new template"
+- "Assign a template to Sarah"
+- "Remove template access from Mike"
 
 I'll guide you through each step and ask for any information I need. Just let me know how I can help you today!
 
 ====================CORE RULES====================
-• I can only help with PulsePro operations listed above
-• I'll ask for missing information and never assume values
-• If you need to cancel any operation, just say 'cancel' or 'stop'
-• I'll confirm all details before executing any operation
+- I can only help with PulsePro operations listed above
+- I'll ask for missing information and never assume values
+- If you need to cancel any operation, just say 'cancel' or 'stop'
+- I'll confirm all details before executing any operation
 """
     }
     print("Prepared all prompts with data injection")

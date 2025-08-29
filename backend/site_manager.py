@@ -684,19 +684,22 @@ class TemplateManager:
         all_templates = self.get_all_template_added_not_added_to_user(user_id=user_id)
         try:
             for template in all_templates:
-                if template.get("template_name") == template_name:
+                if template.get("template_name").lower() == template_name.lower():
                     return template.get("id") 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to retrieve assigned templates: {e}")
             return 0
 
     def get_template_id_by_name(self, template_name: str) -> Optional[int]:
-        """Get template ID by name"""
+        """Get template ID by name (case-insensitive)"""
         all_templates = self.get_all_templates_with_id()
+        template_name_lower = template_name.lower()
+    
         for template in all_templates:
-            if template.get("name") == template_name:
+            if template.get("name", "").lower() == template_name_lower:
                 return template.get("id")
         return None
+
 
     def delete_template(self, template_id: int) -> bool:
         """Delete template by ID"""
@@ -863,6 +866,6 @@ class TemplateManager:
         """Get checklist details by ID"""
         all_checklists = self.get_all_ready_made_checklists()
         for checklist in all_checklists:
-            if checklist.get('name') == checklist_name:
+            if checklist.get('name').lower() == checklist_name.lower():
                 return checklist.get('id')
         return None
