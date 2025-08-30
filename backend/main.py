@@ -381,11 +381,6 @@ async def chat_with_agent(chat_request: ChatRequest):
         # Add user message to conversation and save to MongoDB
         save_conversation_to_db(session_id, "user", user_message, intent=intent)
 
-        if intent == 'UNKNOWN':
-            intent = await execute_phase_0(session_id, user_message)
-            store_session_intent(session_id, intent)
-            print(f"Intent after phase 0: {intent}")
-        
         # Check if user wants to execute (Phase 2)
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end"]
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
@@ -397,6 +392,13 @@ async def chat_with_agent(chat_request: ChatRequest):
                 context={"phase": "cancelled"},
                 data={}
             )
+
+        if intent == 'UNKNOWN':
+            intent = await execute_phase_0(session_id, user_message)
+            store_session_intent(session_id, intent)
+            print(f"Intent after phase 0: {intent}")
+        
+
         
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
         if user_message.lower().strip() in execution_triggers:
@@ -540,6 +542,8 @@ You are PulsePro AI Assistant.
 • Ask for missing information. Never assume values.
 • If user says cancel/stop/exit/abort/halt/quit/terminate/end, reply: "Operation cancelled. No action taken."
 • When you have all required data, ask: "I have all the information needed. Type 'Proceed' to execute this operation."
+• Must always respond in a structural and concise manner. Use bullet points or numbered lists for clarity. Highlight the main heading. Give spaces and line breaks for readability.
+• Use simple, non-technical language. Avoid jargon.
 
 ====================CONVERSATION HISTORY====================
 {conversation_history}
@@ -559,7 +563,7 @@ You are PulsePro AI Assistant.
         full_prompt
     )
     print("response from llm: ",response)
-    ai_response = safe_extract_text(response).strip().upper() or "UNKNOWN"
+    ai_response = safe_extract_text(response).strip() or "UNKNOWN"
 
     
     # Save AI response to MongoDB
@@ -680,7 +684,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_site_manager.create_site_by_name_only(location_name)
             return {
                 "success": True,
-                "message": f"✅ Site '{location_name}' created successfully!",
+                "message": f"✅ Site **{location_name}** created successfully!",
                 "data": result
             }
         
@@ -701,19 +705,19 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
                 if isinstance(result, dict) and not result.get("success", True):
                     return {
                 "success": False,
-                "message": f"❌ Failed to delete site '{location_name}': {result.get('message')}",
+                "message": f"❌ Failed to delete site **{location_name}**: {result.get('message')}",
                 "data": {"error": result.get("message"), "site_id": site_id}
                 }   
 
                 return {
                     "success": True,
-                    "message": f"✅ Site '{location_name}' deleted successfully!",
+                    "message": f"✅ Site **{location_name}** deleted successfully!",
                     "data": {"deleted": True, "site_id": site_id}
                 }
             else:
                 return {
                     "success": False,
-                    "message": f"❌ Site '{location_name}' not found",
+                    "message": f"❌ Site **{location_name}** not found",
                     "data": {"error": "Site not found"}
                 }
         
@@ -721,7 +725,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_site_manager.get_all_sites()
             sites = result.get('locations', [])
             if sites:
-                site_list = "\n".join([f"• {site.get('location_name', 'Unknown')} ,{site.get('city'), site.get('state')}" for site in sites])
+                site_list = "\n".join([f"• **{site.get('location_name', 'Unknown')}**,  **{site.get('city')}**,  **{site.get('state')}**" for site in sites])
                 message = f"📍 Found {len(sites)} sites:\n{site_list}"
             else:
                 message = "📍 No sites found"
@@ -747,7 +751,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not site_id:
                 return {
                     "success": False,
-                    "message": f"❌ Site '{location_name}' not found",
+                    "message": f"❌ Site **{location_name}** not found",
                     "data": {"error": "Site not found"}
                 }
             
@@ -770,7 +774,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_site_manager.assign_users_to_site(site_id, user_ids=user_ids)
             return {
                 "success": True,
-                "message": f"✅ Users assigned to site '{location_name}' successfully!",
+                "message": f"✅ Users assigned to site **{location_name}** successfully!",
                 "data": result
             }
         
@@ -789,7 +793,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not site_id:
                 return {
                     "success": False,
-                    "message": f"❌ Site '{location_name}' not found",
+                    "message": f"❌ Site **{location_name}** not found",
                     "data": {"error": "Site not found"}
                 }
             
@@ -812,7 +816,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_site_manager.unassign_users_from_site(mapped_location_ids=user_ids)
             return {
                 "success": True,
-                "message": f"✅ Users unassigned from site '{location_name}' successfully!",
+                "message": f"✅ Users unassigned from site **{location_name}** successfully!",
                 "data": {"user_ids": user_ids}
             }
          
@@ -825,14 +829,14 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not permission_set_id:
                 return {
                     "success": False,
-                    "message": f"❌ Permission set '{data.get('permission_set')}' not found",
+                    "message": f"❌ Permission set **{data.get('permission_set')}** not found",
                     "data": {"error": "Permission set not found"}
                 }
             
             result = ollama_user_manager.create_user(first_name, last_name, email, permission_set_ids=permission_set_id)
             return {
                 "success": True,
-                "message": f"✅ User '{first_name} {last_name}' created successfully!",
+                "message": f"✅ User **{first_name} {last_name}** created successfully!",
                 "data": result
             }
 
@@ -846,13 +850,13 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
                 result = ollama_user_manager.delete_user(id)
                 return {
                     "success": True,
-                    "message": f"✅ User '{full_name}' deleted successfully!",
+                    "message": f"✅ User **{full_name}** deleted successfully!",
                     "data": {"user_id": id}
                 }
             else:
                 return {
                     "success": False,
-                    "message": f"❌ User '{full_name}' not found",
+                    "message": f"❌ User **{full_name}** not found",
                     "data": {"error": "User not found"}
                 }
             
@@ -880,7 +884,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_permission_manager.get_all_permission_sets()
             print("result: ",result)
             if result:
-                ps_list = "\n".join([f"• {ps.get('name', 'Unknown')}" for ps in result])
+                ps_list = "\n".join([f"• **{ps.get('name', 'Unknown')}**" for ps in result])
                 message = f"🔑 Found {len(result)} permission sets:\n{ps_list}"
             else:
                 message = "🔑 No permission sets found"
@@ -900,7 +904,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not user_id:
                 return {
                     "success": False,
-                    "message": f"❌ User '{full_name}' not found",
+                    "message": f"❌ User **{full_name}** not found",
                     "data": {"error": "User not found"}
                 }
             
@@ -927,7 +931,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             
             return {
                 "success": True,
-                "message": f"✅ Permission sets {action} user '{full_name}' successfully!",
+                "message": f"✅ Permission sets **{action}** user **{full_name}** successfully!",
                 "data": {"permission_set_ids": permission_set_ids}
             }
 
@@ -958,7 +962,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not template_id:
                 return {
                     "success": False,
-                    "message": f"❌ Template '{template_name}' not found",
+                    "message": f"❌ Template **{template_name}** not found",
                     "data": {"error": "Template not found"}
                 }
 
@@ -966,7 +970,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             print("Delete Template Result: ", result)
             return {
                 "success": True,
-                "message": f"✅ Template '{template_name}' deleted successfully!",
+                "message": f"✅ Template **{template_name}** deleted successfully!",
                 "data": {"template_id": template_id}
             }
         
@@ -980,7 +984,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not user_id:
                 return {
                     "success": False,
-                    "message": f"❌ User '{full_name}' not found",
+                    "message": f"❌ User **{full_name}** not found",
                     "data": {"error": "User not found"}
                 }
 
@@ -1001,7 +1005,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_template_manager.assign_templates_to_user(user_id, template_ids)
             return {
                 "success": True,
-                "message": f"✅ Templates assigned to user '{full_name}' successfully!",
+                "message": f"✅ Templates assigned to user **{full_name}** successfully!",
                 "data": {"template_ids": template_ids}
             }
 
@@ -1014,7 +1018,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not user_id:
                 return {
                     "success": False,
-                    "message": f"❌ User '{full_name}' not found",
+                    "message": f"❌ User **{full_name}** not found",
                     "data": {"error": "User not found"}
                 }
 
@@ -1035,7 +1039,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_template_manager.unassign_templates_from_user(user_id, template_ids)
             return {
                 "success": True,
-                "message": f"✅ Templates unassigned from user '{full_name}' successfully!",
+                "message": f"✅ Templates unassigned from user **{full_name}** successfully!",
                 "data": {"template_ids": template_ids}
             }
         
@@ -1046,14 +1050,14 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             if not template_id:
                 return {
                     "success": False,
-                    "message": f"❌ Template '{template_name}' does not exists. PLease select the right template name",
+                    "message": f"❌ Template **{template_name}** does not exists. PLease select the right template name",
                     "data": {"error": "Template already exists"}
                 }
             
             result=ollama_template_manager.create_checklist(template_id)
             return{
                 "success": True,
-                "message": f"✅ Template '{template_name}' created successfully!",
+                "message": f"✅ Template **{template_name}** created successfully!",
                 "data": result
             }
 
