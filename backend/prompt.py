@@ -151,27 +151,34 @@ def get_data_collection_prompt(operation_type):
     
 # Templates
     templates_formatted = "\n".join(
-    f"{idx+1}. {template['name']} (ID: {template['id']})"
+    f"{idx+1}. {template['name']} )"
     for idx, template in enumerate(all_templates_list)
     ) if all_templates_list else "No templates available"
-
+    
+    print("Templates formatted: ", templates_formatted)
 # Users
-    users_formatted = "\n".join(
-    f"{idx+1}. {user['name']} (ID: {user['id']})"
-    for idx, user in enumerate(all_users_list)
-    ) if all_users_list else "No users available"
+
 
 # Templates for creation
     templates_formatted_for_creation = "\n".join(
-    f"{idx+1}. {template['name']} (ID: {template['id']})"
-    for idx, template in enumerate(all_templates_list_for_creation)
+    f" {template['name']} "
+    for template in all_templates_list_for_creation
     ) if all_templates_list_for_creation else "No templates available"
+
+    print("Templates formatted for creation: ", templates_formatted_for_creation)
 
 # Permission sets
     permissions_formatted = "\n".join(
-    f"{idx+1}. {ps['name']} (ID: {ps['id']})"
+    f"{idx+1}. {ps['name']} "
     for idx, ps in enumerate(all_permission_sets_list)
     ) if all_permission_sets_list else "No permission sets available"
+
+    users_formatted = "\n".join(
+    f"{idx+1}. {user}" 
+    for idx, user in enumerate(all_users_list)
+    ) if all_users_list else "No users available"
+
+    print("Users formatted: ", users_formatted)
 
 
 
