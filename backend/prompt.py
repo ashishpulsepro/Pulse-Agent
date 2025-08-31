@@ -246,9 +246,9 @@ REQUIRED DATA: location_name, user_names (list)
 
 ====================CONVERSATION FLOW====================
 User: "Assign users to site"
-Assistant: "Which site? Available sites: {sites_formatted}"
+Assistant: "Which site would you like assign? Available sites: \n{sites_formatted}"
 User: "Delhi Office"
-Assistant: "Which users? Available users: {users_formatted}"
+Assistant: "Which users would you like select? Here are the Available users: \n {users_formatted}"
 User: "John"//can be single user or multiple
 Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -272,9 +272,9 @@ REQUIRED DATA: location_name, user_names (list)
 
 ====================CONVERSATION FLOW====================
 User: "Unassign users from site"
-Assistant: "Which site? Available sites: {sites_formatted}"
+Assistant: "Which site would you like to unassign? Available sites:\n {sites_formatted}"
 User: "Delhi Office"
-Assistant: "Which users? Available users: {users_formatted}"
+Assistant: "Which users would you like select? Here are the Available users: \n  {users_formatted}"
 User: "John"// can be single user or multiple
 Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -304,7 +304,7 @@ Assistant: "What is the last name?"
 User: "Doe"
 Assistant: "What is the email address?"
 User: "john@company.com"
-Assistant: "Which permission set? Mention one single name\n Available sets: {permissions_formatted}"
+Assistant: "Which permission set would you like to assign? Mention one single name\n Available sets:\n {permissions_formatted}"
 User: "Field User"
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -324,7 +324,7 @@ REQUIRED DATA: full_name
 
 ====================CONVERSATION FLOW====================
 User: "Delete a user"
-Assistant: "Which user? Mention single name\n Available users: {users_formatted}"
+Assistant: "Which user would you like to delete? Mention single name\n Available users: \n{users_formatted}"
 User: "John Doe"
 Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -369,9 +369,9 @@ REQUIRED DATA: user_name, permission_sets (list)
 
 ====================CONVERSATION FLOW====================
 User: "Assign permission set to user"
-Assistant: "Which user? Available users: {users_formatted}"
+Assistant: "Which user would you like to assign? Available users: \n{users_formatted}"
 User: "Ashish Saw"
-Assistant: "Which permission set? Mention the names \n Available sets: {permissions_formatted}"
+Assistant: "Which permission set would you like to assign? Mention the names \n Available sets: \n {permissions_formatted}"
 User: "Field User"// could be single or multiple
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -393,9 +393,9 @@ REQUIRED DATA: user_name, permission_sets (list)
 
 ====================CONVERSATION FLOW====================
 User: "Unassign permission set from user"
-Assistant: "Which user? Available users: {users_formatted}"
+Assistant: "Which user would you like to unassign? Available users: \n{users_formatted}"
 User: "John Doe"
-Assistant: "Which permission set? Available sets: {permissions_formatted}"
+Assistant: "Which permission set would you like to assign? Mention the names \n Available sets: \n {permissions_formatted}"
 User: "Field User and Admin"
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -430,7 +430,7 @@ REQUIRED DATA: template_id
 
 ====================CONVERSATION FLOW====================
 User: "Delete template"
-Assistant: "Which template? Available templates: {templates_formatted}"
+Assistant: "Which template would you like to delete? Available templates: \n{templates_formatted}"
 User: "Field User"
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -448,9 +448,9 @@ REQUIRED DATA: user_name, template_name
 
 ====================CONVERSATION FLOW====================
 User: "Assign template to user"
-Assistant: "Which user? Mention single user\n Available users: {users_formatted}"
+Assistant: "Which user would to assign? Mention single user\n Available users: {users_formatted}"
 User: "John Doe"
-Assistant: "Which template? Mention the full name \n Available templates: {templates_formatted}"
+Assistant: "Which template would you like to assign? Mention the full name \n Available templates:\n {templates_formatted}"
 User: "Checklist 1"// can be single or multiple checklists
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
@@ -471,9 +471,9 @@ REQUIRED DATA: user_name, template_name
 
 ====================CONVERSATION FLOW====================
 User: "Unassign template from user"
-Assistant: "Which user? Mention single user\n Available users: {users_formatted}"
+Assistant: "Which user would you like to unassign? Mention single user\n Available users: \n{users_formatted}"
 User: "John Doe"
-Assistant: "Which template? Mention the full name \n Available templates: {templates_formatted}"
+Assistant: "Which template would you like to assign? Mention the full name \n Available templates:\n {templates_formatted}"
 User: "Checklist 1"// can be single or multiple checklists
 Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 

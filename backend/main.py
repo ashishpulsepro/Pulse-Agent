@@ -464,17 +464,17 @@ ONLY VALID INTENTS:
 INTENTS:
 - CREATE_TEMPLATE: create/add/make/new template/checklist/form
 - SHOW_ALL_TEMPLATES: show/list/see/display all templates/checklist/forms/
-- ASSIGN_TEMPLATE_TO_USER: assign/give/allot template/checklist/form to user/employee/staff/person/man
-- UNASSIGN_TEMPLATE_FROM_USER: remove/take/unassign/revoke template/checklist/form from user/employee/staff/person/man
+- ASSIGN_TEMPLATE_TO_USER: assign/give/allot template/checklist/form to user/employee/staff/person/man or assign/give/allot user/employee/staff/person/man  to template/checklist/form
+- UNASSIGN_TEMPLATE_FROM_USER: remove/take/unassign/revoke template/checklist/form from user/employee/staff/person/man or remove/take/unassign/revoke user/employee/staff/person/man from template/checklist/form
 - VIEW_PERMISSION_SETS: show/list/see permissions/roles/access
-- ASSIGN_PERMISSION_SET_TO_USER: give/assign permissions/roles/access to user/employee
-- UNASSIGN_PERMISSION_SET_FROM_USER: remove/take permissions/roles/access from user/employee
+- ASSIGN_PERMISSION_SET_TO_USER: give/assign permissions/roles/access to user/employee or give/assign user/employee permissions/roles/access
+- UNASSIGN_PERMISSION_SET_FROM_USER: remove/take permissions/roles/access from user/employee or remove/take user/employee permissions/roles/access
 - DELETE_TEMPLATE: delete/remove template/checklist/form
 - CREATE_SITE: create/add/make/new/open site/office/location/branch
 - DELETE_SITE: delete/remove/close site/office/location/branch
 - VIEW_SITES: show/list/see/get all sites/offices/locations/branches
-- ASSIGN_USERS_TO_SITE: assign/add/move user/employee to site/office/location
-- UNASSIGN_USERS_FROM_SITE: remove/take user/employee from site/office/location
+- ASSIGN_USERS_TO_SITE: assign/add/move user/employee to site/office/location or assign/add/move site/office/location to user/employee
+- UNASSIGN_USERS_FROM_SITE: remove/take user/employee from site/office/location or remove/take site/office/location from user/employee
 - CREATE_USER: create/add/make/new user/employee/account/person
 - DELETE_USER: delete/remove user/employee/account/person
 - VIEW_USERS: show/list/see/get all users/employees/accounts/people

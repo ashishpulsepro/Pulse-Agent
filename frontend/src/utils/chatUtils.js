@@ -151,7 +151,7 @@ export const renderMarkdown = (text) => {
     }
 
     // If no bold formatting found, return the original text
-    return parts.length > 1 ? parts : text;
+    return parts.length > 0 ? parts : text;
   }
 
   return React.createElement('div', {
