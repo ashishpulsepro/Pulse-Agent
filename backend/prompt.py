@@ -124,6 +124,7 @@ def get_data_collection_prompt(operation_type):
     initialize_ollama_site_manager()
     initialize_ollama_permission_manager()
     initialize_ollama_template_manager()
+    initialize_ollama_user_manager()
 
     # Get current data from systems
     all_sites_list = get_sites_list_formatted()
@@ -139,6 +140,18 @@ def get_data_collection_prompt(operation_type):
 
     all_templates_list_for_creation=ollama_template_manager.get_all_ready_made_checklists()
     print("got the templates list for creation: ", all_templates_list_for_creation)
+
+    all_groups_list=ollama_user_manager.get_all_groups()
+    print("all_groups_list: ", all_groups_list)
+
+
+
+    groups_formatted="\n".join(
+        f"{group['name']}"
+        for group in all_groups_list
+    )
+
+    print("groups formatted: ",groups_formatted)
 
     industries_formatted = "\n".join(
     f"{industry['id']}. {industry['name']}" 
@@ -514,6 +527,149 @@ Available Template Suggestions: {templates_formatted_for_creation}
 
 """,
 
+        'AUTOMATE_CUSTOMER_ACCESS_SETTING': BASE_RULES + f"""====================CUSTOMER ACCESS SETTING OPERATION====================
+REQUIRED DATA: none
+
+====================CONVERSATION FLOW====================
+User: "Auto assign new locations to all users" or "Switch off/autounassign new locations to all users" or "Auto assign new templates to all users" or "Switch off/autounassign new templates to all users"
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• No additional data needed
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+
+""",
+
+        'VIEW_ALL_GROUPS': BASE_RULES+f"""====================VIEW_ALL_GROUPS OPERATION====================
+REQUIRED DATA: no data needed
+
+====================CONVERSATION FLOW====================
+User: "Show me all the groups"
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• No additional data needed
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+
+""",
+
+        'CREATE_A_GROUP':BASE_RULES + """====================CREATE A GROUP OPERATION====================
+REQUIRED DATA: group_name
+
+====================CONVERSATION FLOW====================
+User: "Create a group"
+Assistant: "What should be the name of this group?"
+User: "Mumbai Region"
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Ask for the group name if not provided
+• Confirm when you have the group_name
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the group_name
+Try to avoid asking for the same information multiple times.// follow the conversation history below to avoid repetition
+
+
+""",
+
+        'DELETE_A_GROUP': BASE_RULES + f"""====================DELETE_A_GROUP OPERATION====================
+REQUIRED DATA: group_name
+
+====================CONVERSATION FLOW====================
+User: "Delete a group"
+Assistant: "Which group would you like to delete? Mention single name\n Available users: \n{groups_formatted}"
+User: "Delhi Region"
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available groups when asking which group to delete only once // follow the conversation history below to avoid repetition
+• Ask for the full name of the group // follow the conversation history below to avoid repetition
+• Confirm when you have the group_name
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the group_name
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Users: {groups_formatted}
+""",
+
+        'ADD_USER_TO_GROUP':BASE_RULES+f"""=========================ADD_USER_TO_GROUP=========================
+        REQUIRED DATA:group_name , user_name
+
+====================CONVERSATION FLOW====================
+User: I would like to assign a user to a group
+Assistant: Which group would you like to assign user to? Here is the list of groups, Select one. \n {groups_formatted}
+User: Delhi Region
+Assistant: Now which user would you like to assign this group? Here is the list of users, Make your selection. \n {users_formatted}
+User: John Doe
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available users when asking which user
+• Show available groups when asking which group
+• Ask for group name first, then user
+• Confirm when you have user_name and group_name
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the group_name
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Users: {users_formatted}
+Available groups: {groups_formatted}
+
+""",
+
+        'REMOVE_USER_FROM_GROUP':BASE_RULES+f"""=========================ADD_USER_TO_GROUP=========================
+        REQUIRED DATA:group_name , user_name
+
+====================CONVERSATION FLOW====================
+User: I would like to unassign a user to a group
+Assistant: Which group would you like to unassign user to? Here is the list of groups, Select one. \n {groups_formatted}
+User: Delhi Region
+Assistant: Now which user would you like to unassign this group? Here is the list of users, Make your selection. \n {users_formatted}
+User: John Doe
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available users when asking which user
+• Show available groups when asking which group
+• Ask for group name first, then user
+• Confirm when you have user_name and group_name
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the group_name
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Users: {users_formatted}
+Available groups: {groups_formatted}
+
+""",
+
+        'SHOW_USERS_ADDED_TO_GROUP': BASE_RULES+f"""====================SHOW_USERS_ADDED_TO_GROUP OPERATION====================
+REQUIRED DATA: group_name
+
+====================CONVERSATION FLOW====================
+User: "Show me all the users added to a group"
+Assistant: "Which group user would you like to see? Here is the list of all the groups \n {groups_formatted}"
+User: Group 1
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• No additional data needed only group_name
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+
+Available groups: {groups_formatted} 
+""",
+
+        'SHOW_USERS_ADDED_NOT_TO_GROUP': BASE_RULES+f"""====================SHOW_USERS_ADDED_TO_GROUP OPERATION====================
+REQUIRED DATA: group_name
+
+====================CONVERSATION FLOW====================
+User: "Show me all the users not added to a group"
+Assistant: "Which group user would you like to see? Here is the list of all the groups \n {groups_formatted}"
+User: Group 1
+Assistant: "Great! Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• No additional data needed only group_name
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+
+Available groups: {groups_formatted}
+"""
+,
 
         'UNKNOWN': f"""You are PulsePro AI Assistant.
 Hello! I'm your PulsePro AI Assistant, designed to help you manage your PulsePro system efficiently.
@@ -523,10 +679,17 @@ SITE MANAGEMENT:
 - View all existing sites
 - Delete sites
 
-USER MANAGEMENT:
+USER AND GROUP MANAGEMENT:
 - Create new users with permission sets
 - View all users
 - Delete users
+- Create a new group
+- Add/Remove users to/from group
+- Delete a Group
+- Show users added to a group
+- Show Users not added to a group
+- Auto assign new locations to all users 
+- Auto assign new templates to all users
 
 USER-SITE ASSIGNMENTS:
 - Assign users to specific sites
@@ -856,8 +1019,133 @@ If conversation mentions creating template "10 Point Hygiene Check" in "Food and
 {"data": {"industry_name": "Food and Hospitality", "template_name": "10 Point Hygiene Check"}, "operation_type": "CREATE_TEMPLATE"}
 
 Extract the industry_name and template_name from the conversation and generate the JSON response.
-                 """
+                 """,
+        'AUTOMATE_CUSTOMER_ACCESS_SETTING': BASE_RULES + """====================AUTOMATE_CUSTOMER_ACCESS_SETTING JSON GENERATION====================    
+          REQUIRED DATA TO EXTRACT (True/False): Auto assign new templates to all users - True , Auto assign new locations to all users - True , Switch-off/Auto-unassign  new templates to all users - False , Switch-off/Auto unassign new locations to all users - False        
+            
+EXACT JSON FORMAT TO RETURN:
+{"data": {"accessToAllSite":true/false,"accessToAllChecklist":true/false}, "operation_type": "AUTOMATE_CUSTOMER_ACCESS_SETTING"}
 
+EXAMPLE:
+If conversation mentions "Auto assign new locations to all users" , return:
+{"data": {"accessToAllSite":true}, "operation_type": "AUTOMATE_CUSTOMER_ACCESS_SETTING"}
+If conversation mentions "Switch off/autounassign new locations to all users" , return:
+{"data": {"accessToAllSite":false}, "operation_type": "AUTOMATE_CUSTOMER_ACCESS_SETTING"}
+If conversation mentions "Auto assign new templates to all users" , return:
+{"data": {"accessToAllChecklist":true}, "operation_type": "AUTOMATE_CUSTOMER_ACCESS_SETTING"}
+If conversation mentions "Switch off/autounassign new templates to all users" , return:
+{"data": {"accessToAllChecklist":false}, "operation_type": "AUTOMATE_CUSTOMER_ACCESS_SETTING"}
+If conersation mentions "Auto assign new templates to all users and Auto assign new locations to all users", return :
+{"data": {"accessToAllSite":true,"accessToAllChecklist":true}, "operation_type": "AUTOMATE_CUSTOMER_ACCESS_SETTING"}
+Extract the accessToAllSite and accessToAllChecklist from the conversation and generate the JSON response.
+                """,
+
+                'VIEW_ALL_GROUPS':BASE_RULES + """====================SHOW_ALL_TEMPLATES JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- No data extraction needed for this operation
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {}, "operation_type": "VIEW_ALL_GROUPS"}
+
+EXAMPLE:
+Always return exactly:
+{"data": {}, "operation_type": "VIEW_ALL_GROUPS"}
+
+Generate the JSON response with empty data object.
+""",
+
+                'DELETE_A_GROUP':BASE_RULES + """====================DELETE_A_GROUP JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- group_name: Full name of the group to be deleted
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"group_name": "GROUP_NAME"}, "operation_type": "DELETE_A_GROUP"}
+
+EXAMPLE:
+If conversation mentions deleting group "Group 1", return:
+{"data": {"group_name": "Group 1"}, "operation_type": "DELETE_A_GROUP"}
+
+Extract the group_name from the conversation and generate the JSON response.
+""",
+
+                'CREATE_A_GROUP':BASE_RULES + """====================CREATE_A_GROUP JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- group_name: Full name of the group to be deleted
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"group_name": "GROUP_NAME"}, "operation_type": "CREATE_A_GROUP"}
+
+EXAMPLE:
+If conversation mentions creating group "Group 1", return:
+{"data": {"group_name": "Group 1"}, "operation_type": "CREATE_A_GROUP"}
+
+Extract the group_name from the conversation and generate the JSON response.
+""",
+
+                'ADD_USER_TO_GROUP':BASE_RULES + """====================ADD_USER_TO_GROUP JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- group_name: Complete name of the group
+- user_names: Full Names of the users to be assigned , can be single or multiple
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"user_names": ["USERNAME 1","USERNAME 2","USERNAME 3"], "group_name":"GROUP 1"}, "operation_type": "ADD_USER_TO_GROUP"}
+
+EXAMPLE:
+If conversation mentions assigning user "User 1" and "User 2" to group "Group 1", return:
+{"data": {"user_names": ["User 1","User 2"], "group_name":"Group 1"}, "operation_type": "ADD_USER_TO_GROUP"}
+
+Extract the user_names and group_name from the conversation and generate the JSON response.
+""",
+
+                'REMOVE_USER_FROM_GROUP':BASE_RULES + """====================REMOVE_USER_FROM_GROUP JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- group_name: Complete name of the group
+- user_names: Full Names of the users to be removed , can be single or multiple
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"user_names": ["USERNAME 1","USERNAME 2","USERNAME 3"], "group_name":"GROUP 1"}, "operation_type": "REMOVE_USER_FROM_GROUP"}
+
+EXAMPLE:
+If conversation mentions remove user "User 1" and "User 2" from group "Group 1", return:
+{"data": {"user_names": ["User 1","User 2"], "group_name":"Group 1"}, "operation_type": "REMOVE_USER_FROM_GROUP"}
+
+Extract the user_names and group_name from the conversation and generate the JSON response.
+""",
+
+                'SHOW_USERS_ADDED_TO_GROUP':BASE_RULES + """====================SHOW_USERS_ADDED_TO_GROUP JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- group_name: Full name of the group 
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"group_name": "GROUP_NAME"}, "operation_type": "SHOW_USERS_ADDED_TO_GROUP"}
+
+EXAMPLE:
+If conversation mentions show users of group "Group 1", return:
+{"data": {"group_name": "Group 1"}, "operation_type": "SHOW_USERS_ADDED_TO_GROUP"}
+
+Extract the group_name from the conversation and generate the JSON response.
+""",
+
+                'SHOW_USERS_ADDED_NOT_TO_GROUP':BASE_RULES + """====================SHOW_USERS_ADDED_NOT_TO_GROUP JSON GENERATION====================
+
+REQUIRED DATA TO EXTRACT:
+- group_name: Full name of the group 
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"group_name": "GROUP_NAME"}, "operation_type": "SHOW_USERS_ADDED_NOT_TO_GROUP"}
+
+EXAMPLE:
+If conversation mentions show users of group "Group 1", return:
+{"data": {"group_name": "Group 1"}, "operation_type": "SHOW_USERS_ADDED_NOT_TO_GROUP"}
+
+Extract the group_name from the conversation and generate the JSON response.
+"""
     }
     
     # Return the specific prompt or a default message if operation not found

@@ -110,8 +110,6 @@ class AuthenticationManager:
             
             self.tokens.access_token = access_token
             logger.info("Access token refreshed successfully")
-
-            print("Access token refreshed successfully")
             
             return access_token
             
@@ -568,6 +566,191 @@ class UserManager:
                 return user['user']
         return None
     
+    def get_customer_access_settings(self) -> Dict[str, Any]:
+        """Get customer access settings"""
+        url = f"{self.base_url}/customer/get_customer_access_settings/"
+        headers = self._get_headers()
+        
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("Retrieved customer access settings")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get customer access settings: {e}")
+            raise PulseProAPIException(f"Failed to retrieve customer access settings: {e}")
+        
+    def update_customer_setting(self, accessToAllSite: bool, accessToAllChecklist: bool) -> Dict[str, Any]:
+        """Update customer access settings"""
+        url = f"{self.base_url}/customer/update_customer_setting/"
+        headers = self._get_headers()
+        
+        payload = {
+            "accessToAllSite": accessToAllSite,
+            "accessToAllChecklist": accessToAllChecklist
+        }
+        print("in update_customer_setting")
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            data = response.json()
+            logger.info("Updated customer access settings")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to update customer access settings: {e}")
+            raise PulseProAPIException(f"Failed to update customer access settings: {e}")
+        
+
+    def get_all_groups(self) -> List[Dict[str,Any]]:
+        """Get all the groups"""
+        print("inside get all groups")
+        url=f"{self.base_url}/customer/get_groups/"
+        headers =self._get_headers()
+        print("header")
+
+        payload={"count":"","limit":100,"offset":0,"orderDir":"desc","orderBy":"id","search_keyword":""}
+        
+        print("payload")
+
+        try: 
+            response=requests.post(url,headers=headers,json=payload)
+            response.raise_for_status()
+            print("groups: ",response.json())
+
+            data=response.json().get("groupList")
+
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+
+    def get_group_id_by_name(self,name:str)->int:
+
+        groups=self.get_all_groups()
+        for group in groups:
+            if group.get("name").lower()==name.lower():
+                return group.get("id")
+        return 0
+    
+    def create_a_group(self,group_name:str)->Dict[str,Any]:
+        """creation of group"""
+
+        url=f"{self.base_url}/customer/add_group/"
+        headers=self._get_headers()
+
+        payload={
+            "group_name":group_name
+        }
+        print(payload)
+        try:
+            response=requests.post(url,headers=headers,json=payload)
+            response.raise_for_status()
+            data=response.json()
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+        
+
+
+    def add_multiple_user_to_group(self,userIds:List , groupId:int) ->Dict[str,Any]:
+        """Add multiple user to groups"""
+
+        url=f"{self.base_url}/customer/add_multiple_user_to_group/"
+        headers=self._get_headers()
+
+        payload={
+            "userIds":userIds,
+            "group_id":groupId
+        }
+
+        try:
+            response=requests.post(url,headers=headers,json=payload)
+            response.raise_for_status()
+
+            data=response.json()
+
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+
+
+    def delete_multiple_group_user(self, group_user_ids:List)->Dict[str,Any]:
+        """delete multiple user from group"""
+        url=f"{self.base_url}/customer/delete_multiple_group_user/"
+        headers=self._get_headers()
+
+        payload={
+            "group_user_ids":group_user_ids
+        }
+        print("inside delete_multiple_group_user ")
+
+        try:
+            response=requests.post(url,headers=headers,json=payload)
+            response.raise_for_status()
+
+            data=response.json()
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+
+    def delete_group(self,groupId:int)->Dict[str,Any]:
+        """Delete group forcefully"""
+        users=self.get_users_added_to_group(groupId=groupId)
+        print("users: ",users)
+        user_ids=[
+                user.get("id")
+               for user in users ]
+        print("user_ids: ",user_ids)
+        if user_ids:
+            result=self.delete_multiple_group_user(user_ids)
+
+        url=f"{self.base_url}/customer/delete_group/{groupId}/"
+        headers=self._get_headers()
+
+        try:
+            response=requests.get(url,headers=headers)
+            response.raise_for_status()
+            data=response.json()
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+
+    def get_users_added_to_group(self,groupId:int)->List[Dict[str,Any]]:
+        """get all the users already added to a group with groupId"""
+
+        url=f"{self.base_url}/customer/get_group_users/{groupId}/"
+        headers=self._get_headers()
+        print("inside get_users_added_to_group")
+
+        try:
+            response=requests.get(url,headers=headers)
+            response.raise_for_status()
+            print("response: ",response.json())
+
+            data=response.json().get("users")
+            return data if data else []
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+
+    def get_all_members_not_added_to_group(self,group_id:int)->List[Dict[str,Any]]:
+        """get all the users not added to the group"""
+
+        url=f"{self.base_url}/customer/get_all_members_not_added_to_group/{group_id}/"
+        headers=self._get_headers()
+
+        try:
+            response=requests.get(url,headers=headers)
+            response.raise_for_status()
+
+            data=response.json().get("users")
+            return data
+        except requests.exceptions.RequestException as e:
+            logger.error(e)
+
 
 class TemplateManager:
     """Manage templates for users"""

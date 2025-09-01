@@ -193,7 +193,7 @@ import google.generativeai as genai
 def get_gemini_client(
     model: str = "gemini-2.5-flash",
     temperature: float = 0.2,
-    max_output_tokens: int = 1512,
+    max_output_tokens: int = 4096,
     top_p: float = 0.95,
     api_key: str = None
 ):
@@ -444,7 +444,8 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
         "VIEW_PERMISSION_SETS", "ASSIGN_PERMISSION_SET_TO_USER", 
         "UNASSIGN_PERMISSION_SET_FROM_USER",
         "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", "CREATE_TEMPLATE",
-        "DELETE_TEMPLATE","UNKNOWN"
+        "CREATE_A_GROUP","DELETE_A_GROUP","ADD_USER_TO_GROUP","REMOVE_USER_FROM_GROUP","VIEW_ALL_GROUPS","SHOW_USERS_ADDED_TO_GROUP","SHOW_USERS_ADDED_NOT_TO_GROUP",
+        "DELETE_TEMPLATE","AUTOMATE_CUSTOMER_ACCESS_SETTING","UNKNOWN"
     ]
     
     # Improved intent detection prompt
@@ -462,6 +463,7 @@ ONLY VALID INTENTS:
 
 
 INTENTS:
+- AUTOMATE_CUSTOMER_ACCESS_SETTING: "Auto assign new locations to all users" or "Switch off/autounassign/remove new locations to all users" or "Auto assign new templates to all users" or "Switch off/autounassign/remove new templates to all users"
 - CREATE_TEMPLATE: create/add/make/new template/checklist/form
 - SHOW_ALL_TEMPLATES: show/list/see/display all templates/checklist/forms/
 - ASSIGN_TEMPLATE_TO_USER: assign/give/allot template/checklist/form to user/employee/staff/person/man or assign/give/allot user/employee/staff/person/man  to template/checklist/form
@@ -478,9 +480,17 @@ INTENTS:
 - CREATE_USER: create/add/make/new user/employee/account/person
 - DELETE_USER: delete/remove user/employee/account/person
 - VIEW_USERS: show/list/see/get all users/employees/accounts/people
+- VIEW_ALL_GROUPS: state/show/list/see all the groups in the system
+- CREATE_A_GROUP: create/add/make new group/cluster
+- DELETE_A_GROUP: delete/remove a group
+- ADD_USER_TO_GROUP: add/assign/allot user to Group/cluster
+- REMOVE_USER_FROM_GROUP: remove/delete/take user from Group/cluster
+- SHOW_USERS_ADDED_TO_GROUP: show/list/display users/member added/assigned to a group/cluster
+- SHOW_USERS_ADDED_NOT_TO_GROUP: show/list/display users/member not added/assigned to a group/cluster
 - UNKNOWN: hello/hi/chat/help/other topics/ about the platform
 
 RULES:
+0. If message contains "auto" or "automaticcaly" + "assign" or "unassign" + "location/site" or "checklist/template" ->return :  AUTOMATE_CUSTOMER_ACCESS_SETTING
 1. If message contains "permission/role/access" + "assign/give" → ASSIGN_PERMISSION_SET_TO_USER
 2. If message contains "permission/role/access" + "remove/revoke" → UNASSIGN_PERMISSION_SET_FROM_USER
 3. If message contains "user" + "to" + "site/office" → ASSIGN_USERS_TO_SITE
@@ -1060,7 +1070,198 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
                 "message": f"✅ Template **{template_name}** created successfully!",
                 "data": result
             }
+        
+        elif operation_type == "AUTOMATE_CUSTOMER_ACCESS_SETTING":
+            previous_access = ollama_user_manager.get_customer_access_settings()
+            print("previous access: ", previous_access)
 
+            print("accessToAllSite",field_exists(data,"accessToAllSite"))
+            print("accessToAllChecklist",field_exists(data,"accessToAllChecklist"))
+
+            if(field_exists(data,"accessToAllSite") and field_exists(data,"accessToAllChecklist")):
+                print("1st Phase")
+                result=ollama_user_manager.update_customer_setting(accessToAllSite=data.get("accessToAllSite"), accessToAllChecklist=data.get("accessToAllChecklist"))
+                return{
+                "success": True,
+                "message": f"✅ Operation on location and checklist was successful !",
+                "data": result
+            }
+            elif(field_exists(data,"accessToAllSite")):
+                print("2nd Phase")
+                result= ollama_user_manager.update_customer_setting(accessToAllSite=data.get("accessToAllSite"), accessToAllChecklist=previous_access.get("accessToAllChecklist"))
+                return{
+                "success": True,
+                "message": f"✅ Operation on location was successful !",
+                "data": result
+            }
+            elif(field_exists(data,"accessToAllChecklist")):
+                print("3rd phase")
+                result= ollama_user_manager.update_customer_setting(accessToAllSite=previous_access.get("accessToAllSite"), accessToAllChecklist=data.get("accessToAllChecklist"))
+                return{
+                "success": True,
+                "message": f"✅ Operation on checklist was successful !",
+                "data": result
+            }
+
+            else:
+                return {
+                    "success": False,
+                    "message": f"❌ Failed to perform it, try later",
+                    "data": {"error": "Some internal error"}
+                }
+            
+        elif operation_type=="VIEW_ALL_GROUPS":
+            all_groups_list= ollama_user_manager.get_all_groups()
+            groups_formatted="\n".join(
+                f"{idx+1}. **{group['name']}**"
+                for idx,group in enumerate(all_groups_list)
+                )if all_groups_list else "Not Available"
+
+            message = f"📍 Found {len(all_groups_list)} Groups:\n{groups_formatted}"
+
+            return{
+                "success":True,
+                "message": message,
+                "data": {"groups_list": groups_formatted}
+            }
+        
+        elif operation_type=="DELETE_A_GROUP":
+            group_name=data.get("group_name")
+
+            group_id=ollama_user_manager.get_group_id_by_name(group_name)
+
+            if not group_id:
+                return{
+                    "success":False,
+                    "message":f"❌ Group **{group_name}** not found",
+                    "data":{"error":"Group not found"}
+                }
+            print("group_id: ", group_id)
+            result=ollama_user_manager.delete_group(group_id)
+
+            return{
+                "success":True,
+                "message":f"✅  Group **{group_name}** deleted successfully",
+                "data":{"group_id": group_id}
+
+            }
+        
+        elif operation_type=="CREATE_A_GROUP":
+            group_name=data.get("group_name")
+            print("group name: ",group_name)
+
+
+            result=ollama_user_manager.create_a_group(group_name)
+            print("result : ", result)
+
+            return{
+                "success":True,
+                "message":f"✅  Group **{group_name}** created successfully",
+                "data":{"group_id": group_name}
+
+            }
+
+        elif operation_type=="ADD_USER_TO_GROUP":
+            group_name=data.get("group_name")
+            user_names=data.get("user_names")
+
+            group_id=ollama_user_manager.get_group_id_by_name(group_name)
+            userIds=[]
+
+            for user_name in user_names:
+                userIds.append(ollama_user_manager.get_user_by_name(user_name))
+
+            if not userIds:
+                return{
+                    "success":False,
+                    "message":f"User not found",
+                    "data":{"error": "user not found"}
+                }
+            if not group_id:
+                return{
+                    "success":False,
+                    "message":f"Group not found",
+                    "data":{"error":"group not found"}
+                }
+
+            result=ollama_user_manager.add_multiple_user_to_group(userIds=userIds,groupId=group_id)
+            return{
+                "success":True,
+                "message":f"✅  Users **{user_names}** assigned successfully to **{group_name}**",
+                "data":{"group_name": group_name}
+
+            }
+        
+        elif operation_type=="REMOVE_USER_FROM_GROUP":
+            group_name=data.get("group_name")
+            user_names=data.get("user_names")
+            print("user_names: ",user_names)
+
+            group_id=ollama_user_manager.get_group_id_by_name(group_name)
+            print("group id: " ,group_id)
+            userIds=[]
+
+            result_user_list=ollama_user_manager.get_users_added_to_group(group_id)
+            print("result_user_list : ", result_user_list)
+            for user in result_user_list:
+                if user_names and user.get("member_name") in user_names: 
+                    userIds.append(user.get("id")) 
+                
+            print("user ids: ",userIds )
+            if not userIds:
+                return{
+                    "success":False,
+                    "message":f"User not found",
+                    "data":{"error": "user not found"}
+                }
+            if not group_id:
+                return{
+                    "success":False,
+                    "message":f"Group not found",
+                    "data":{"error":"group not found"}
+                }
+
+            result=ollama_user_manager.delete_multiple_group_user(group_user_ids=userIds)
+            return{
+                "success":True,
+                "message":f"✅  Users **{user_names}** removed successfully from **{group_name}**",
+                "data":{"group_name": group_name}
+
+            }            
+
+        elif operation_type=="SHOW_USERS_ADDED_TO_GROUP":
+            group_name=data.get("group_name")
+            group_id=ollama_user_manager.get_group_id_by_name(group_name)
+
+            result=ollama_user_manager.get_users_added_to_group(groupId=group_id)
+
+            result_formatted="\n".join(
+            f"{idx+1}.{res['member_name']}"
+            for idx,res in enumerate(result)
+            )
+
+            return{
+                "success":True,
+                "message":f"Found {len(result)} assigned users for the group {group_name} \n {result_formatted}",
+                "data":{"group name":group_name }
+            }
+
+        elif operation_type=="SHOW_USERS_ADDED_NOT_TO_GROUP":
+            group_name=data.get("group_name")
+            group_id=ollama_user_manager.get_group_id_by_name(group_name)
+
+            result=ollama_user_manager.get_all_members_not_added_to_group(group_id=group_id)
+
+            result_formatted="\n".join(
+            f"{idx+1}.{res['name']}"
+            for idx,res in enumerate(result)
+            )
+
+            return{
+                "success":True,
+                "message":f"Found {len(result)} non assigned users for the group {group_name} \n {result_formatted}",
+                "data":{"group name":group_name }
+            }
 
 
         else:
@@ -1105,6 +1306,12 @@ async def get_chat_history_endpoint(session_id: str):
     
 
 
+def field_exists(response: dict, field: str) -> bool:
+    "checks if field exist in response"
+    print("inside field_exist , response:", response)
+    if not isinstance(response, dict):
+        return False
+    return field in response
 
 
 
