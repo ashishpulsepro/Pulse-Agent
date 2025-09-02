@@ -189,51 +189,44 @@ import google.generativeai as genai
 load_dotenv()
 
 import google.generativeai as genai
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+
 
 def get_gemini_client(
     model: str = "gemini-2.5-flash",
     temperature: float = 0.2,
     max_output_tokens: int = 4096,
     top_p: float = 0.95,
-    api_key: str = None
+    api_key: str = None,
 ):
     """
-    Initializes and returns a Gemini model client with the given config.
+    Initializes and returns a LangChain-wrapped Gemini client.
 
     Args:
-        model (str): The Gemini model to use.
+        model (str): The Gemini model to use (e.g., "gemini-2.5-flash", "gemini-1.5-pro").
         temperature (float): Controls randomness (higher = more creative).
         max_output_tokens (int): Max tokens in output.
         top_p (float): Nucleus sampling value.
-        api_key (str): Your Google API key. If None, expects env variable GOOGLE_API_KEY.
+        api_key (str): Your Google API key. If None, expects GEMINI_API_KEY env variable.
 
     Returns:
-        genai.GenerativeModel: Configured Gemini client.
+        ChatGoogleGenerativeAI: LangChain-compatible Gemini client.
     """
-    
     if api_key is None:
-        import os
         api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
-        raise ValueError("API key must be provided either via argument or GOOGLE_API_KEY env variable")
+        raise ValueError("API key must be provided via argument or GEMINI_API_KEY env variable")
 
-    # Configure client
-    genai.configure(api_key=api_key)
-
-    # Initialize model
-    model_client = genai.GenerativeModel(
-        model,
-        generation_config={
-            "temperature": temperature,
-            "max_output_tokens": max_output_tokens,
-            "top_p": top_p,
-        },
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        top_p=top_p,
+        google_api_key=api_key,
+        convert_system_message_to_human=True,  # ✅ important for tool/agent support
     )
-
-    return model_client
-
-
 
 
 
@@ -354,60 +347,106 @@ def safe_extract_text(response):
         return ""
 
 
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.tools import tool
+
+
+import langchain
+from langchain_core.tools import tool
+
+def make_tools(session_id: str, intent: str | None = None):
+    """Factory to create tools bound to a specific session_id and intent."""
+
+    # @tool("detect_intent", return_direct=True)
+    # async def detect_intent_tool(user_message: str) -> str:
+    #     """Detects the user intent (CREATE_SITE, DELETE_USER, etc.)"""
+    #     detected_intent = await execute_phase_0(session_id, user_message)
+    #     store_session_intent(session_id, detected_intent)   # ✅ save new intent
+    #     return detected_intent
+
+    @tool("collect_data", return_direct=True)
+    async def collect_data_tool(user_message: str) -> str:
+        """Collects missing information from the user for the given intent"""
+        current_intent = get_session_intent(session_id) or intent or "UNKNOWN"
+        client = get_gemini_client(temperature=0.2)
+        response = await execute_phase_1(session_id, user_message, client, current_intent)
+        return response.message
+
+    @tool("execute_operation", return_direct=True)
+    async def execute_operation_tool(_: str = "") -> dict:
+        """Converts collected data into JSON and executes the operation"""
+        current_intent = get_session_intent(session_id) or intent or "UNKNOWN"
+        response = await execute_phase_2(session_id, current_intent)
+        return response.dict()
+
+    return [ collect_data_tool, execute_operation_tool]
+
+
+
+
+
+
+
+
+
+
+
+import langgraph
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import HumanMessage
 
 
         
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_agent(chat_request: ChatRequest):
-    """Two-phase chat agent: Phase 1 (Chat) → Phase 2 (Execute)"""
-    
     session_id = chat_request.session_id or str(uuid.uuid4())
-    intent = get_session_intent(session_id) or "UNKNOWN"
     user_message = chat_request.message.strip()
-    print(f"Session ID: {session_id}, Intent initial: {intent}")
-    
+    intent = get_session_intent(session_id) or "UNKNOWN"
+
     try:
-        # client = get_ollama_client()
-
-        client = get_gemini_client()
-        # model = client.GenerativeModel("gemini-2.5-pro")
-
-        
-        # Initialize session (MongoDB-based)
-        if session_id not in chat_sessions:
-            chat_sessions[session_id] = {"conversation": []}
-        
-        # Add user message to conversation and save to MongoDB
+        # save user message
         save_conversation_to_db(session_id, "user", user_message, intent=intent)
 
-        # Check if user wants to execute (Phase 2)
-        cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end"]
-        if any(trigger in user_message.lower() for trigger in cancel_triggers):
+        # cancel logic
+        if any(trigger in user_message.lower() for trigger in ["cancel", "stop", "exit"]):
             clear_conversation_from_db(session_id)
-            return ChatResponse(
-                message="Operation cancelled. No action taken.",
-                status="cancelled",
-                session_id=session_id,
-                context={"phase": "cancelled"},
-                data={}
-            )
+            return ChatResponse(message="Cancelled", status="cancelled", session_id=session_id)
 
-        if intent == 'UNKNOWN':
-            intent = await execute_phase_0(session_id, user_message)
-            store_session_intent(session_id, intent)
-            print(f"Intent after phase 0: {intent}")
-        
+        # ✅ Initialize agent with session-specific tools
+        tools = make_tools(session_id, intent)
+        llm = get_gemini_client()
 
-        
-        execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
-        if user_message.lower().strip() in execution_triggers:
-            return await execute_phase_2(session_id, intent)
-        
-        # Phase 1: Continue conversation
-        print("Proceeding to Phase 1 chat...")
-        return await execute_phase_1(session_id, user_message, client,intent)
-        
+        # ✅ setup memory checkpointer
+        memory = MemorySaver()
+        agent_executor = create_react_agent(model=llm, tools=tools, checkpointer=memory)
+        print("agent executor created")
+        # ✅ include thread_id when invoking
+        result: Dict[str, Any] = await agent_executor.ainvoke(
+        {"messages": [HumanMessage(content=user_message)]},   # ✅ explicit HumanMessage
+        config={"configurable": {"thread_id": session_id}},
+        )
+
+        print("resltu: ", result)
+        ai_response = None
+        if "output" in result:
+            ai_response = result["output"]
+        elif "messages" in result and result["messages"]:
+            ai_response = result["messages"][-1].content
+
+
+        save_conversation_to_db(session_id, "assistant", ai_response, intent=intent)
+
+        return ChatResponse(
+            message=ai_response,
+            status="completed",
+            session_id=session_id,
+            context={"phase": "agent"},
+            data=result,
+        )
+
     except Exception as e:
         logger.error(f"Chat error: {e}")
         return ChatResponse(
@@ -415,7 +454,7 @@ async def chat_with_agent(chat_request: ChatRequest):
             status="error",
             session_id=session_id,
             context={"error": str(e)},
-            data={}
+            data={},
         )
 
 
@@ -505,11 +544,9 @@ CRITICAL: Return ONLY the intent name from the list of valid intents (e.g., "CRE
 
     try:
         # Get response from LLM with optimized settings
-        response = client.generate_content(
-           intent_prompt
-        )
+        response = client.invoke([HumanMessage(content=intent_prompt)])
         
-        detected_intent = (response.text or "").strip().upper()
+        detected_intent = (response.content or "").strip().upper()
         print(f"Detected intent: {detected_intent}")
         
         # Validate intent and return
@@ -571,11 +608,9 @@ You are PulsePro AI Assistant.
 
     print("into llm now")
     # Get response from LLM
-    response = client.generate_content(
-        full_prompt
-    )
+    response =  client.invoke([HumanMessage(content=full_prompt)])
     print("response from llm: ",response)
-    ai_response = safe_extract_text(response).strip() or "UNKNOWN"
+    ai_response = (response.content or "").strip() or "UNKNOWN"
 
     
     # Save AI response to MongoDB
@@ -622,11 +657,9 @@ async def execute_phase_2(session_id: str,intent:str, client=get_gemini_client(t
         print("Phase 2 prompt: ",phase_2_prompt)
         
         # Get JSON response from LLM
-        response = client.generate_content(
-            phase_2_prompt
-        )
+        response = client.invoke([HumanMessage(content=phase_2_prompt)])
         
-        json_response = response.text.strip()
+        json_response = (response.content or "").strip()
         
         # Clean and parse JSON
         if json_response.startswith('```'):

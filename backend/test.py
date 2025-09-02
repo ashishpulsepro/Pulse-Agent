@@ -230,3 +230,34 @@ except Exception as e:
 #         )
 
 
+
+
+
+
+# import getpass
+# import os
+
+# if not os.environ.get("GOOGLE_API_KEY"):
+#   os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter API key for Google Gemini: ")
+
+# from langchain.chat_models import init_chat_model
+
+# model = init_chat_model("gemini-2.5-flash", model_provider="google_genai")
+
+# query = "Hi!"
+# response = model.invoke([{"role": "user", "content": query}])
+# response.text()
+
+# model_with_tools = model.bind_tools(tools)
+
+# query = "Hi!"
+# response = model_with_tools.invoke([{"role": "user", "content": query}])
+
+# print(f"Message content: {response.text()}\n")
+# print(f"Tool calls: {response.tool_calls}")
+
+# query = "Search for the weather in SF"
+# response = model_with_tools.invoke([{"role": "user", "content": query}])
+
+# print(f"Message content: {response.text()}\n")
+# print(f"Tool calls: {response.tool_calls}")
