@@ -673,6 +673,44 @@ Assistant: "Great! Type 'Proceed' to execute this operation."
 Available groups: {groups_formatted}
 """
 ,
+        'DETAIL_SPECIFIC_USER':BASE_RULES+f"""=========================DETAIL_SPECIFIC_USER=========================
+        REQUIRED DATA: user_name
+
+====================CONVERSATION FLOW====================
+User: I would like to see detail of a user 
+Assistant: Which user would you like to see the detail of? Here is the list of users, Select one. \n {users_formatted}
+User: John Doe
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available users when asking which user
+• Ask for user name
+• Confirm when you have user_name
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the user_name
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Users: {users_formatted}
+""",
+
+        'DETAIL_SPECIFIC_SITE':BASE_RULES+f"""=========================DETAIL_SPECIFIC_SITE=========================
+        REQUIRED DATA: site_name
+
+====================CONVERSATION FLOW====================
+User: I would like to see detail of a site 
+Assistant: Which site would you like to see the detail of? Here is the list of site, Select one. \n {sites_formatted}
+User: Delhi Region
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================INSTRUCTIONS====================
+• Show available sites when asking which site
+• Ask for site name
+• Confirm when you have site_name
+Must ask for Type 'Proceed' to execute this operation at the last step after getting the site_name
+Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+
+Available Sites: {sites_formatted}
+""",
+
 
         'UNKNOWN': f"""You are PulsePro AI Assistant.
 Hello! I'm your PulsePro AI Assistant, designed to help you manage your PulsePro system efficiently.
@@ -681,6 +719,7 @@ SITE MANAGEMENT:
 - Create new sites/locations
 - View all existing sites
 - Delete sites
+- See the details of any site
 
 USER AND GROUP MANAGEMENT:
 - Create new users with permission sets
@@ -693,6 +732,7 @@ USER AND GROUP MANAGEMENT:
 - Show Users not added to a group
 - Auto assign new locations to all users 
 - Auto assign new templates to all users
+- See the details of any User
 
 USER-SITE ASSIGNMENTS:
 - Assign users to specific sites
@@ -1148,7 +1188,36 @@ If conversation mentions show users of group "Group 1", return:
 {"data": {"group_name": "Group 1"}, "operation_type": "SHOW_USERS_ADDED_NOT_TO_GROUP"}
 
 Extract the group_name from the conversation and generate the JSON response.
-"""
+""",
+
+                'DETAIL_SPECIFIC_USER':BASE_RULES +"""==========================DETAIL_SPECIFIC_USER=================================
+REQUIRED DATA TO EXTRACT:
+- user_name: full name of the user
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"user_name": "USER_NAME"}, "operation_type": "DETAIL_SPECIFIC_USER"}
+
+EXAMPLE:
+If conversation mentions show detail of "User 1", return:
+{"data": {"user_name": "User 1"}, "operation_type": "DETAIL_SPECIFIC_USER"}
+
+Extract the user_name from the conversation and generate the JSON response.
+""",
+
+                'DETAIL_SPECIFIC_SITE':BASE_RULES +"""==========================DETAIL_SPECIFIC_SITE=================================
+REQUIRED DATA TO EXTRACT:
+- site_name: full name of the site/location
+
+EXACT JSON FORMAT TO RETURN:
+{"data": {"site_name": "SITE_NAME"}, "operation_type": "DETAIL_SPECIFIC_SITE"}
+
+EXAMPLE:
+If conversation mentions show detail of Site 1 site, return:
+{"data": {"site_name": "Site 1"}, "operation_type": "DETAIL_SPECIFIC_SITE"}
+
+Extract the user_name from the conversation and generate the JSON response.
+""",
+
     }
     
     # Return the specific prompt or a default message if operation not found

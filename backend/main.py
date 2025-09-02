@@ -442,7 +442,7 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
         "ASSIGN_USERS_TO_SITE", "UNASSIGN_USERS_FROM_SITE", 
         "CREATE_USER", "DELETE_USER", "VIEW_USERS", 
         "VIEW_PERMISSION_SETS", "ASSIGN_PERMISSION_SET_TO_USER", 
-        "UNASSIGN_PERMISSION_SET_FROM_USER",
+        "UNASSIGN_PERMISSION_SET_FROM_USER","DETAIL_SPECIFIC_USER","DETAIL_SPECIFIC_SITE",
         "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", "CREATE_TEMPLATE",
         "CREATE_A_GROUP","DELETE_A_GROUP","ADD_USER_TO_GROUP","REMOVE_USER_FROM_GROUP","VIEW_ALL_GROUPS","SHOW_USERS_ADDED_TO_GROUP","SHOW_USERS_ADDED_NOT_TO_GROUP",
         "DELETE_TEMPLATE","AUTOMATE_CUSTOMER_ACCESS_SETTING","UNKNOWN"
@@ -487,6 +487,8 @@ INTENTS:
 - REMOVE_USER_FROM_GROUP: remove/delete/take user from Group/cluster
 - SHOW_USERS_ADDED_TO_GROUP: show/list/display users/member added/assigned to a group/cluster
 - SHOW_USERS_ADDED_NOT_TO_GROUP: show/list/display users/member not added/assigned to a group/cluster
+- DETAIL_SPECIFIC_USER: show/list/display  detail/more about/of a specific user/member
+- DETAIL_SPECIFIC_SITE: show/list/display  detail/more about/of a specific site/location
 - UNKNOWN: hello/hi/chat/help/other topics/ about the platform
 
 RULES:
@@ -1262,6 +1264,79 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
                 "message":f"Found {len(result)} non assigned users for the group {group_name} \n {result_formatted}",
                 "data":{"group name":group_name }
             }
+        
+        elif operation_type=="DETAIL_SPECIFIC_USER":
+            all_users=ollama_user_manager.get_all_users()
+            print("all_users: ", all_users)
+            selected_user=data.get("user_name")
+            print("data: ",data)
+
+            if not selected_user:
+                return{
+                "success": False,
+                "message": f"❌ Failed operation: {operation_type}, Unknown user",
+                "data": {"error": "Failed operation"}
+                }
+
+            for user in all_users:
+                if user.get("name").lower()==selected_user.lower():
+                    email=user.get("email")
+                    permission=user.get("permission_set")
+                    id=user.get("id")
+                    name=user.get("name")
+                    
+
+            return{
+                "success":True,
+                "message":f" Here is the detail of the User:\n User : **{name}** (ID: **{id}**)\n Email: **{email}**\n Permissions: **{permission}**\n ",
+                "data":{"user_id": id}
+            }
+
+        elif operation_type=="DETAIL_SPECIFIC_SITE":
+            all_sites=ollama_site_manager.get_all_sites().get("locations")
+            print("all_sites: ", all_sites)
+            selected_site=data.get("site_name")
+            print("data: ",data)
+
+            if not selected_site:
+                return{
+                "success": False,
+                "message": f"❌ Failed operation: {operation_type}, Unknown site",
+                "data": {"error": "Failed operation"}
+                }
+            site_name=selected_site
+            id=0
+            city="UNKNOWN"
+            state="UNKNOWN"
+            country="UNKNOWN"
+            geo_fencing_enabled=False
+            geo_fencing_distance=0.0
+            custom_field_data=[]
+            full_address="UNKNOWN"
+            pincode=826001
+            mobile=1234567891
+
+            for site in all_sites:
+                if site.get("location_name").lower()==selected_site.lower():
+                    city=site.get("city")
+                    state=site.get("state")
+                    id=site.get("id")
+                    site_name=site.get("location_name")
+                    full_address=site.get("full_address")
+                    pincode=site.get("pincode") 
+                    mobile=site.get("mobile")
+                    country= site.get("country")
+                    geo_fencing_enabled=site.get("geo_fencing_enabled")
+                    geo_fencing_distance=site.get("geo_fencing_distance")
+                    custom_field_data=site.get("custom_field_meta")
+
+                    
+
+            return{
+                "success":True,
+                "message":f" Here is the detail of the SIte:\n Site : **{site_name}** (ID: **{id}**)\n Address: **{full_address}**, PIN: **{pincode}**\n City: **{city}**, State: **{state}**, Country: **{country}**\n MOBILE: **{mobile}**\n Geofencing Enabled: **{geo_fencing_enabled}**, Geofencing Distance: **{geo_fencing_distance}**\n Custom Field Data:**{custom_field_data}** ",
+                "data":{"site_id": id}
+            }
 
 
         else:
@@ -1312,22 +1387,6 @@ def field_exists(response: dict, field: str) -> bool:
     if not isinstance(response, dict):
         return False
     return field in response
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1382,117 +1441,6 @@ async def chat_health_check():
         )
 
 
-
-
-
-
-    
-
-
-
-
-
-# Enhanced health check
-@app.get("/health")
-async def enhanced_health_check():
-    """Enhanced health check with Ollama model status"""
-    
-    global ollama_site_manager
-    
-    # Test Ollama connection
-    ollama_status = "not_tested"
-    if ollama_site_manager:
-        ollama_status = "connected" if ollama_site_manager.conversational_agent.ollama_client else "fallback_mode"
-    
-    health_status = {
-        "status": "healthy",
-        "service": "PulsePro Site Management API with Ollama",
-        "components": {
-            "api": "healthy",
-            "authentication": "healthy" if ollama_site_manager else "not_initialized",
-            "ollama_model": ollama_status,
-            "conversational_ai": "available" if ollama_site_manager else "not_available"
-        }
-    }
-    
-    return health_status
-
-# ============================================
-# UTILITY ENDPOINTS
-# ============================================
-
-@app.get("/health")
-async def enhanced_health_check():
-    """Enhanced health check with Ollama model status"""
-    
-    global ollama_site_manager
-    
-    # Test Ollama connection
-    ollama_status = "not_tested"
-    if ollama_site_manager:
-        ollama_status = "connected" if ollama_site_manager.conversational_agent.ollama_client else "fallback_mode"
-    
-    health_status = {
-        "status": "healthy",
-        "service": "PulsePro Site Management API with Ollama",
-        "timestamp": datetime.now().isoformat(),
-        "components": {
-            "api": "healthy",
-            "authentication": "healthy" if ollama_site_manager else "not_initialized",
-            "ollama_model": ollama_status,
-            "conversational_ai": "available" if ollama_site_manager else "not_available"
-        }
-    }
-    
-    return health_status
-
-
-@app.get("/status")
-async def get_system_status():
-    """Get detailed system status"""
-    
-    global ollama_site_manager, ollama_config
-    
-    status_info = {
-        "system": {
-            "initialized": ollama_site_manager is not None,
-            "model_name": ollama_config.model_name,
-            "temperature": ollama_config.temperature
-        },
-        "ollama": {
-            "available": False,
-            "models": [],
-            "target_model_status": "unknown"
-        },
-        "conversations": {
-            "active_sessions": 0,
-            "total_conversations": 0
-        }
-    }
-    
-    # Check Ollama status
-    try:
-        import ollama
-        models = ollama.list()
-        available_models = [model['name'] for model in models['models']]
-        
-        status_info["ollama"]["available"] = True
-        status_info["ollama"]["models"] = available_models
-        status_info["ollama"]["target_model_status"] = "available" if ollama_config.model_name in available_models else "not_found"
-        
-    except Exception as e:
-        status_info["ollama"]["error"] = str(e)
-    
-    # Check conversation stats
-    if ollama_site_manager:
-        agent = ollama_site_manager.conversational_agent
-        status_info["conversations"]["active_sessions"] = len(agent.conversations)
-        status_info["conversations"]["total_conversations"] = sum(
-            len(ctx.conversation_history) for ctx in agent.conversations.values()
-        )
-    
-    return status_info
-
 # ============================================
 # ERROR HANDLERS
 # ============================================
@@ -1505,292 +1453,4 @@ async def not_found_handler(request, exc):
 async def internal_error_handler(request, exc):
     return {"error": "Internal server error", "message": "Please check logs for details"}
 
-# ============================================
-# STARTUP
-# ============================================
 
-
-# Test Ollama connection endpoint
-@app.get("/ollama/test", response_model=StandardResponse)
-async def test_ollama_connection():
-    """Test Ollama connection and model availability"""
-    try:
-        import ollama
-        
-        # Try to create client with explicit host (adjust if needed)
-        client = ollama.Client(host='http://localhost:11434')
-        
-        # Test basic connection first
-        try:
-            models = client.list()
-            
-            # Handle the models response properly
-            available_models = []
-            if hasattr(models, 'models'):
-                # Handle case where models is an object with models attribute
-                model_list = models.models
-            elif isinstance(models, dict) and 'models' in models:
-                # Handle case where models is a dict with models key
-                model_list = models['models']
-            else:
-                # Handle other cases
-                model_list = models if isinstance(models, list) else [models]
-            
-            # Extract model names
-            for model in model_list:
-                if hasattr(model, 'model'):
-                    # Handle model objects with model attribute
-                    available_models.append(model.model)
-                elif hasattr(model, 'name'):
-                    # Handle model objects with name attribute
-                    available_models.append(model.name)
-                elif isinstance(model, dict):
-                    # Handle dict models
-                    name = model.get('model') or model.get('name') or model.get('id')
-                    if name:
-                        available_models.append(name)
-                else:
-                    # Fallback to string representation
-                    available_models.append(str(model))
-        except Exception as list_error:
-            return StandardResponse(
-                success=False,
-                message="Failed to list models from Ollama",
-                data={
-                    "error": str(list_error),
-                    "suggestions": [
-                        "Check if Ollama is running: ollama serve",
-                        "Verify Ollama is accessible at http://localhost:11434",
-                        "Try: curl http://localhost:11434/api/tags"
-                    ]
-                }
-            )
-        
-        # Test llama3.1:8b specifically
-        model_available = "llama3.1:8b" in available_models
-        
-        if model_available:
-            try:
-                # Test generation with timeout
-                response = client.generate(
-                    model="llama3.1:8b",
-                    prompt="who was the first president of the united states?",
-                    options={"num_predict": 500}
-                )
-
-                print(f"Test response: {response['response']}")
-                
-                return StandardResponse(
-                    success=True,
-                    message="Ollama connection successful",
-                    data={
-                        "available_models": available_models,
-                        "target_model": "llama3.1:8b",
-                        "model_status": "available",
-                        "test_response": response['response']
-                    }
-                )
-            except Exception as gen_error:
-                return StandardResponse(
-                    success=False,
-                    message="Model found but generation failed",
-                    data={
-                        "available_models": available_models,
-                        "target_model": "llama3.1:8b",
-                        "model_status": "available_but_failed",
-                        "error": str(gen_error),
-                        "suggestion": "Model may be corrupted, try: ollama pull llama3.1:8b"
-                    }
-                )
-        else:
-            return StandardResponse(
-                success=False,
-                message="llama3.1:8b model not found",
-                data={
-                    "available_models": available_models,
-                    "target_model": "llama3.1:8b",
-                    "model_status": "not_found",
-                    "suggestion": "Run: ollama pull llama3.1:8b"
-                }
-            )
-            
-    except ImportError:
-        return StandardResponse(
-            success=False,
-            message="Ollama Python package not installed",
-            data={
-                "error": "ImportError: ollama module not found",
-                "suggestion": "Install with: pip install ollama"
-            }
-        )
-    except Exception as e:
-        return StandardResponse(
-            success=False,
-            message="Ollama connection failed",
-            data={
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "suggestions": [
-                    "Make sure Ollama is running: ollama serve",
-                    "Check if port 11434 is accessible",
-                    "Verify Ollama installation: ollama --version",
-                    "Try manual test: curl http://localhost:11434/api/tags"
-                ]
-            }
-        )
-
-
-# Phase 1 Prompt - Intent Detection and Data Collection
-PHASE_1_PROMPT = """You are PulsePro AI Assistant.
-
-====================CORE RULES====================
-• Handle ONLY these operations: CREATE/VIEW/DELETE sites and users, ASSIGN/UNASSIGN users to sites, VIEW permission sets
-• Ignore unrelated queries. Reply: "I can only help with PulsePro operations."
-• Ask for missing information. Never assume values.
-• If user says cancel/stop/exit/abort/halt/quit/terminate/end, reply: "Operation cancelled. No action taken."
-• When you have all required data, ask: "I have all the information needed. Type 'Proceed' to execute this operation."
-
-====================OPERATIONS & REQUIRED DATA====================
-1. CREATE_SITE: location_name
-2. VIEW_SITES: no data needed  
-3. DELETE_SITE: location_name
-4. ASSIGN_USERS_TO_SITE: location_name, user_names (list)
-5. UNASSIGN_USERS_FROM_SITE: location_name, user_names (list)
-6. CREATE_USER: first_name, last_name, email, permission_set
-7. DELETE_USER: full_name
-8. VIEW_USERS: no data needed
-9. VIEW_PERMISSION_SETS: no data needed
-
-====================CONVERSATION EXAMPLES====================
-
-CREATE SITE:
-User: "Create a site"
-Assistant: "What should be the name/location of this site?"
-User: "Mumbai Office"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-
-DELETE SITE:
-User: "Delete a site"
-Assistant: "Which site do you want to delete? Available sites: {all_sites_list}"
-User: "Bangalore Hub"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-VIEW SITES:
-User: "Show me all sites"
-Assistant: "Great! Type 'Proceed' to execute this operation."
-
-ASSIGN USERS TO SITE:
-User: "Assign users to site"
-Assistant: "Which site? Available sites: {all_sites_list}"
-User: "Delhi Office"
-Assistant: "Which users? Available users: {all_users_list}"
-User: "John, Sarah"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-UNASSIGN USERS FROM SITE:
-User: "Unassign users from site"
-Assistant: "Which site? Available sites: {all_sites_list}"
-User: "Delhi Office"
-Assistant: "Which users? Available users: {all_users_list}"
-User: "John, Sarah"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-CREATE USER:
-User: "Create a user"
-Assistant: "What is the first name?"
-User: "John"
-Assistant: "What is the last name?"
-User: "Doe"
-Assistant: "What is the email address?"
-User: "john@company.com"
-Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
-User: "Field User"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-
-DELETE USER:
-User: "Delete a user"
-Assistant: "Which user? Available users: {all_users_list}"
-User: "John Doe"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
-
-VIEW USERS:
-User: "Show me all users"
-Assistant: "Great! Type 'Proceed' to execute this operation."
-
-VIEW PERMISSION SETS:
-User: "Show me all permission sets"
-Assistant: "Great! Type 'Proceed' to execute this operation."
-
-ASSIGN PERMISSION SETS TO USER:
-User: "Assign permission set to user"
-Assistant: "Which user? Available users: {all_users_list}"
-User: "John Doe"
-Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
-User: "Field User"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-
-UNASSIGN PERMISSION SETS FROM USER:
-User: "Unassign permission set from user"
-Assistant: "Which user? Available users: {all_users_list}"
-User: "John Doe"
-Assistant: "Which permission set? Available sets: {all_permission_sets_list}"
-User: "Field User and Admin"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-
-
-====================WHEN TO SHOW LISTS====================
-Show sites list ONLY for: DELETE_SITE, ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE
-Show users list ONLY for: ASSIGN_USERS_TO_SITE, UNASSIGN_USERS_FROM_SITE, DELETE_USER
-Show permission sets ONLY for: CREATE_USER
-
-Available Sites: {all_sites_list}
-Available Users: {all_users_list}
-Available Permission Sets: {all_permission_sets_list}
-"""
-
-# Phase 2 Prompt - JSON Generation
-PHASE_2_PROMPT = """You are a JSON generator for PulsePro Site operations.
-
-ANALYZE the conversation history and generate ONLY a JSON response in this EXACT format:
-
-For CREATE_SITE:
-{"data": {"location_name": "EXTRACTED_NAME"}, "operation_type": "CREATE_SITE"}
-
-For VIEW_SITES:
-{"data": {}, "operation_type": "VIEW_SITES"}
-
-For DELETE_SITE:
-{"data": {"location_name": "EXTRACTED_NAME"}, "operation_type": "DELETE_SITE"}
-
-For ASSIGN_USERS_TO_SITE:
-{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "ASSIGN_USERS_TO_SITE"}
-
-For UNASSIGN_USERS_FROM_SITE:
-{"data": {"location_name": "EXTRACTED_NAME", "user_list": ["USER1", "USER2"]}, "operation_type": "UNASSIGN_USERS_FROM_SITE"}
-
-For CREATE_USER:
-{"data": {"first_name": "FIRSTNAME", "last_name": "LASTNAME", "email": "EMAIL", "permission_set": "PERMISSIONSET"}, "operation_type": "CREATE_USER"}
-
-For DELETE_USER:
-{"data": {"full_name": "FULLNAME"}, "operation_type": "DELETE_USER"}
-
-For VIEW_USERS:
-{"data": {}, "operation_type": "VIEW_USERS"}
-
-For VIEW_PERMISSION_SETS:
-{"data": {}, "operation_type": "VIEW_PERMISSION_SETS"}
-
-For ASSIGN_PERMISSION_SET_TO_USER:
-{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET 1" , PERMISSIONSET 2]}, "operation_type": "ASSIGN_PERMISSION_SET_TO_USER"}
-
-For UNASSIGN_PERMISSION_SET_FROM_USER:
-{"data": {"full_name": "FULLNAME", "permission_set": ["PERMISSIONSET 1" , PERMISSIONSET 2]}, "operation_type": "UNASSIGN_PERMISSION_SET_FROM_USER"}
-
-RULES:
-- Extract the data from the conversation history
-- Return ONLY the JSON object, nothing else
-- No explanations, no text, no markdown, just pure JSON
-- Use the exact operation_type names shown above
-- Strictly follow the JSON format shown above , including field names and structure
-
-"""

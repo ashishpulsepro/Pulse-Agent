@@ -540,7 +540,9 @@ class UserManager:
             users=[{
                 'id':user.get("id"),
                 'name':user.get("member_name"),
-                'user':user.get("user_id")
+                'user':user.get("user_id"),
+                'email':user.get("email"),
+                'permission_set':user.get("permission_bundles")
             } for user in team]
 
             return users
