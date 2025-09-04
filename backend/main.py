@@ -191,7 +191,7 @@ load_dotenv()
 import google.generativeai as genai
 
 def get_gemini_client(
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
     temperature: float = 0.2,
     max_output_tokens: int = 4096,
     top_p: float = 0.95,
