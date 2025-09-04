@@ -1,82 +1,82 @@
-#!/usr/bin/env python3
+# #!/usr/bin/env python3
 
-import requests
-import json
-import asyncio
-from typing import Dict, Any
+# import requests
+# import json
+# import asyncio
+# from typing import Dict, Any
 
-async def test_ollama_connection():
-    """Test Ollama connection and model availability"""
+# async def test_ollama_connection():
+#     """Test Ollama connection and model availability"""
     
-    base_url = "http://localhost:11434"
-    model = "llama3.1:8b"
+#     base_url = "http://localhost:11434"
+#     model = "llama3.1:8b"
     
-    print("Testing Ollama connection...")
+#     print("Testing Ollama connection...")
     
-    try:
-        # 1. Check if server is running
-        print("1. Checking Ollama server status...")
-        response = requests.get(f"{base_url}/api/tags", timeout=5)
-        response.raise_for_status()
+#     try:
+#         # 1. Check if server is running
+#         print("1. Checking Ollama server status...")
+#         response = requests.get(f"{base_url}/api/tags", timeout=5)
+#         response.raise_for_status()
         
-        # 2. List available models
-        models_data = response.json()
-        available_models = [model["name"] for model in models_data.get("models", [])]
-        print(f"   Available models: {available_models}")
+#         # 2. List available models
+#         models_data = response.json()
+#         available_models = [model["name"] for model in models_data.get("models", [])]
+#         print(f"   Available models: {available_models}")
         
-        # 3. Check if target model exists
-        if model in available_models:
-            print(f"   ✓ Model '{model}' is available")
-        else:
-            print(f"   ✗ Model '{model}' not found!")
-            return False
+#         # 3. Check if target model exists
+#         if model in available_models:
+#             print(f"   ✓ Model '{model}' is available")
+#         else:
+#             print(f"   ✗ Model '{model}' not found!")
+#             return False
             
-        # 4. Test a simple generation
-        print("2. Testing model generation...")
-        test_payload = {
-            "model": model,
-            "prompt": "Say 'Hello, I am working!' in exactly those words.",
-            "stream": False
-        }
+#         # 4. Test a simple generation
+#         print("2. Testing model generation...")
+#         test_payload = {
+#             "model": model,
+#             "prompt": "Say 'Hello, I am working!' in exactly those words.",
+#             "stream": False
+#         }
         
-        response = requests.post(
-            f"{base_url}/api/generate",
-            json=test_payload,
-            timeout=30
-        )
-        response.raise_for_status()
+#         response = requests.post(
+#             f"{base_url}/api/generate",
+#             json=test_payload,
+#             timeout=30
+#         )
+#         response.raise_for_status()
         
-        result = response.json()
-        print(f"   Response: {result.get('response', 'No response')}")
-        print(f"   ✓ Model generation successful!")
+#         result = response.json()
+#         print(f"   Response: {result.get('response', 'No response')}")
+#         print(f"   ✓ Model generation successful!")
         
-        return True
+#         return True
         
-    except requests.exceptions.ConnectionError:
-        print("   ✗ Cannot connect to Ollama server. Is it running?")
-        return False
-    except requests.exceptions.Timeout:
-        print("   ✗ Request timed out. Server might be busy.")
-        return False
-    except requests.exceptions.RequestException as e:
-        print(f"   ✗ Request error: {e}")
-        return False
-    except Exception as e:
-        print(f"   ✗ Unexpected error: {e}")
-        return False
+#     except requests.exceptions.ConnectionError:
+#         print("   ✗ Cannot connect to Ollama server. Is it running?")
+#         return False
+#     except requests.exceptions.Timeout:
+#         print("   ✗ Request timed out. Server might be busy.")
+#         return False
+#     except requests.exceptions.RequestException as e:
+#         print(f"   ✗ Request error: {e}")
+#         return False
+#     except Exception as e:
+#         print(f"   ✗ Unexpected error: {e}")
+#         return False
 
-def test_sync_ollama():
-    """Synchronous version for quick testing"""
-    return asyncio.run(test_ollama_connection())
+# def test_sync_ollama():
+#     """Synchronous version for quick testing"""
+#     return asyncio.run(test_ollama_connection())
 
-if __name__ == "__main__":
-    success = test_sync_ollama()
+# if __name__ == "__main__":
+#     success = test_sync_ollama()
     
-    if success:
-        print("\n🎉 Ollama is working perfectly!")
-        print("You can now use your FastAPI integration.")
-    else:
-        print("\n❌ Ollama test failed. Check the errors above.")
+#     if success:
+#         print("\n🎉 Ollama is working perfectly!")
+#         print("You can now use your FastAPI integration.")
+#     else:
+#         print("\n❌ Ollama test failed. Check the errors above.")
 
 
 
@@ -84,20 +84,20 @@ if __name__ == "__main__":
 
 
 
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
+# from pymongo.mongo_client import MongoClient
+# from pymongo.server_api import ServerApi
 
-uri = "mongodb+srv://ashish:Radhey@123@cluster0.3uxl669.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# uri = "mongodb+srv://ashish:Radhey@123@cluster0.3uxl669.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
-# Create a new client and connect to the server
-client = MongoClient(uri, server_api=ServerApi('1'))
+# # Create a new client and connect to the server
+# client = MongoClient(uri, server_api=ServerApi('1'))
 
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    print("Pinged your deployment. You successfully connected to MongoDB!")
-except Exception as e:
-    print(e)
+# # Send a ping to confirm a successful connection
+# try:
+#     client.admin.command('ping')
+#     print("Pinged your deployment. You successfully connected to MongoDB!")
+# except Exception as e:
+#     print(e)
 
 
 # Test Ollama connection endpoint in main if needed
@@ -261,3 +261,53 @@ except Exception as e:
 
 # print(f"Message content: {response.text()}\n")
 # print(f"Tool calls: {response.tool_calls}")
+
+
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from db import get_db_session, initialize_db
+from datetime import datetime, timezone
+
+app = FastAPI()
+
+engine, SessionLocal = initialize_db()
+
+@app.get("/ping-db")
+def ping_db(db: Session = Depends(get_db_session)):
+    # Check if there's any row in auth_user
+    results = db.execute(text('SELECT * FROM customer_location')).fetchall()
+    
+    # if result :
+    #     # Insert new data if table is empty
+    #     insert_query = text("""
+    #         INSERT INTO auth_user (
+    #             id, password, last_login, is_superuser, username, 
+    #             first_name, last_name, email, is_staff, is_active, date_joined
+    #         ) VALUES (
+    #             :id, :password, :last_login, :is_superuser, :username, 
+    #             :first_name, :last_name, :email, :is_staff, :is_active, :date_joined
+    #         )
+    #         RETURNING *;
+    #     """)
+        
+    #     new_user = {
+    #         "id": 244567890,
+    #         "password": "New pass",
+    #         "last_login": None,
+    #         "is_superuser": False,
+    #         "username": "john.doe@pulsepro.ai",
+    #         "first_name": "John",
+    #         "last_name": "Doe",
+    #         "email": "john.doe@pulsepro.ai",
+    #         "is_staff": False,
+    #         "is_active": True,
+    #         "date_joined": datetime.now(timezone.utc)
+    #     }
+        
+    #     result = db.execute(insert_query, new_user).fetchone()
+    #     db.commit()
+
+    # Convert SQLAlchemy Row to dictionary
+    data = [dict(row._mapping) for row in results]
+    return {"data": data}
