@@ -754,6 +754,17 @@ class UserManager:
             logger.error(e)
 
 
+
+
+from collections import defaultdict
+from typing import List, Dict, Any
+import requests
+from sqlalchemy import text
+
+
+
+
+
 class TemplateManager:
     """Manage templates for users"""
     def __init__(self, auth_manager: AuthenticationManager):
@@ -1022,29 +1033,46 @@ class TemplateManager:
 
 
 
+
     def get_all_ready_made_checklists(self) -> List[Dict[str, Any]]:
-        """Get all checklists"""
+        """Get top 2 checklists per industry by download_count"""
         url = f"{self.base_url}/checklist/get_checklist_industry_wise/"
         headers = self._get_headers()
 
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-
             data = response.json()
-            checklists = [
+
+            checklists = data.get("checklists", [])
+
+            # Group by industry
+            industry_checklists = defaultdict(list)
+            for checklist in checklists:
+                industry_id = checklist.get("industry")
+                industry_checklists[industry_id].append(checklist)
+
+            # Pick top 2 checklists per industry by download_count
+            top_checklists = []
+            for industry_id, items in industry_checklists.items():
+                top_items = sorted(
+                    items,
+                    key=lambda x: x.get("download_count", 0),
+                    reverse=True
+                )[:5]
+                top_checklists.extend(top_items)
+
+            return [
                 {
-                    'id': checklist.get('id'),
-                    'name': checklist.get('checklist_name'),
-                    'industry_id': checklist.get('industry')
-                } 
-                for checklist in data.get('checklists', [])
+                    "id": c.get("id"),
+                    "name": c.get("checklist_name"),
+                    "industry_id": c.get("industry")
+                }
+                for c in top_checklists
             ]
-            logger.info(f"Retrieved {len(checklists)} checklists for all industries")
-            return checklists
+
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to get checklists  : {e}")
-            raise PulseProAPIException(f"Failed to retrieve checklists: {e}")
+            raise Exception(f"Failed to retrieve checklists: {e}")
 
 
     def get_checklist_id_by_name(self, checklist_name: str) -> int:
