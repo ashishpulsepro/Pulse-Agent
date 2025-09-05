@@ -51,7 +51,8 @@ class ApiService {
 
   async getUserProfile(accessToken) {
   try {
-    const response = await fetch("https://staging-api.pulsepro.ai/common/get_profile/", {
+    console.log("inside");
+    const response = await fetch("/api/common/get_profile/", {
       method: "GET",
       headers: {
         "Accept": "application/json, text/plain, */*",
@@ -59,20 +60,26 @@ class ApiService {
       }
     });
 
+    console.log("status:", response.status);
+
+    // Read once
+    const text = await response.text();
+    console.log("raw response:", text);
+
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    const profile = await response.json();
+    // Parse JSON from text
+    const profile = JSON.parse(text);
 
     // return only selected fields
     return {
       email: profile.email,
       firstName: profile.first_name,
       lastName: profile.last_name,
-      role: profile.role,
-      imageUrl: profile.image_url
-    };
+      role: profile.role
+        };
   } catch (error) {
     console.error("Failed to fetch profile:", error);
     return null;
