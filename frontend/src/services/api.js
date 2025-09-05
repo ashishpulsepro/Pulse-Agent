@@ -35,9 +35,11 @@ class ApiService {
   // Chat methods
   async sendMessage(message, sessionId = null) {
     // const access_token=localStorage.getItem("user").get("access_token")
-    // const email_id=getUserProfile(access_token)
+    // const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MDc0OTI3LCJqdGkiOiIwZTQ3YzE4YTU0NmM0M2YwODhmYmJlMWIzNWQwYzZjOSIsInVzZXJfaWQiOjc1Nn0.jSMt8bbIWrmuEKl_9UjFOpbj3hlITIi7h6h9nzU5JyA'
+    // const email_id=await this.getUserEmail(access_token)
+    // console.log("email: "+ email_id)
     const email_id="ashish@pulsepro.ai"
-    return this.request("/chat", {
+    return this.request("/chat/onboarding", {
       method: "POST",
       body: JSON.stringify({
         message,
@@ -79,7 +81,8 @@ class ApiService {
 
 async getUserEmail(accessToken) {
   try {
-    const response = await fetch("https://staging-api.pulsepro.ai/common/get_profile/", {
+    console.log("inside");
+    const response = await fetch("/api/common/get_profile/", {
       method: "GET",
       headers: {
         "Accept": "application/json, text/plain, */*",
@@ -87,17 +90,27 @@ async getUserEmail(accessToken) {
       }
     });
 
+    console.log("status:", response.status);
+
+    // Read once
+    const text = await response.text();
+    console.log("raw response:", text);
+
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    const profile = await response.json();
-    return profile.email;  // returns the "email" field
+    // Parse JSON from text
+    const profile = JSON.parse(text);
+
+    console.log("email:", profile.email);
+    return profile.email;
   } catch (error) {
     console.error("Failed to fetch profile:", error);
     return null;
   }
 }
+
 
 
 
