@@ -28,6 +28,8 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = Field(None, description="Session ID for conversation continuity")
     user_id: Optional[str] = Field(None, description="User ID")
     session_intent: Optional[str] = Field(None, description="Detected intent for the session")
+    email:str=Field(...,description="email of the user")
+
 
 class ChatResponse(BaseModel):
     message: str
@@ -73,7 +75,7 @@ def initialize_ollama_site_manager():
     """Initialize the Ollama site manager"""
     global ollama_site_manager
     
-    try:
+    try:        
         # Initialize your site manager here
         # Replace this with your actual SiteManager initialization
         from site_manager import SiteManager  # Replace with actual import
@@ -273,11 +275,12 @@ conversations_collection = db.conversations
 # Simple session storage (keeping for backward compatibility)
 chat_sessions = {}
 
-def save_conversation_to_db(session_id: str, role: str, message: str, intent: str = None):
+def save_conversation_to_db(session_id: str, role: str, message: str,email:str=None, intent: str = None):
     """Save message to MongoDB"""
     try:
         conversations_collection.insert_one({
             "session_id": session_id,
+            "email":email,
             "role": role,
             "message": message,
             "timestamp": datetime.now(),
@@ -296,6 +299,21 @@ def get_conversation_from_db(session_id: str) -> list:
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
+    
+
+def get_all_session_ids(email:str) -> list:
+    """Fetch all unique session IDs from MongoDB"""
+    try:
+        session_ids = conversations_collection.distinct(
+            "session_id",  # field to get unique values of
+            {"email": email}  # filter condition
+        )
+        return session_ids
+    except Exception as e:
+        logger.error(f"Failed to fetch session_ids from MongoDB: {e}")
+        return []
+
+
 
 def clear_conversation_from_db(session_id: str):
     """Clear conversation history from MongoDB"""
@@ -361,10 +379,11 @@ def safe_extract_text(response):
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_agent(chat_request: ChatRequest):
     """Two-phase chat agent: Phase 1 (Chat) → Phase 2 (Execute)"""
-    
+    print("inside chat")
     session_id = chat_request.session_id or str(uuid.uuid4())
     intent = get_session_intent(session_id) or "UNKNOWN"
     user_message = chat_request.message.strip()
+    email=chat_request.email.strip()
     print(f"Session ID: {session_id}, Intent initial: {intent}")
     
     try:
@@ -379,7 +398,7 @@ async def chat_with_agent(chat_request: ChatRequest):
             chat_sessions[session_id] = {"conversation": []}
         
         # Add user message to conversation and save to MongoDB
-        save_conversation_to_db(session_id, "user", user_message, intent=intent)
+        save_conversation_to_db(session_id, "user", user_message,email=email, intent=intent)
 
         # Check if user wants to execute (Phase 2)
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end"]
@@ -406,7 +425,7 @@ async def chat_with_agent(chat_request: ChatRequest):
         
         # Phase 1: Continue conversation
         print("Proceeding to Phase 1 chat...")
-        return await execute_phase_1(session_id, user_message, client,intent)
+        return await execute_phase_1(session_id, user_message, client,intent,email=email)
         
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -523,7 +542,7 @@ CRITICAL: Return ONLY the intent name from the list of valid intents (e.g., "CRE
 
 import prompt
 # Updated execute_phase_1 function
-async def execute_phase_1(session_id: str, user_message: str, client,intent:str) -> ChatResponse:
+async def execute_phase_1(session_id: str, user_message: str, client,intent:str,email:str) -> ChatResponse:
     """Phase 1: Normal chat - Intent detection and data collection"""
     # Get conversation history from MongoDB
     db_messages = get_conversation_from_db(session_id)
@@ -579,7 +598,7 @@ You are PulsePro AI Assistant.
 
     
     # Save AI response to MongoDB
-    save_conversation_to_db(session_id, "assistant", ai_response, intent=intent)
+    save_conversation_to_db(session_id, "assistant", ai_response,email=email, intent=intent)
     
     # Determine status
     if "Type 'Proceed' to execute".lower() in ai_response.lower():
@@ -696,7 +715,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_site_manager.create_site_by_name_only(location_name)
             return {
                 "success": True,
-                "message": f"✅ Site **{location_name}** created successfully!",
+                "message": result['message'],
                 "data": result
             }
         
@@ -848,7 +867,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
             result = ollama_user_manager.create_user(first_name, last_name, email, permission_set_ids=permission_set_id)
             return {
                 "success": True,
-                "message": f"✅ User **{first_name} {last_name}** created successfully!",
+                "message": result.get("message"),
                 "data": result
             }
 
@@ -1066,10 +1085,10 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
                     "data": {"error": "Template already exists"}
                 }
             
-            result=ollama_template_manager.create_checklist(template_id)
+            result=ollama_template_manager.create_checklist(template_id,template_name)
             return{
                 "success": True,
-                "message": f"✅ Template **{template_name}** created successfully!",
+                "message": result['message'],
                 "data": result
             }
         
@@ -1362,7 +1381,7 @@ async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
         }
 
 @app.get("/chat/history/{session_id}")
-async def get_chat_history_endpoint(session_id: str):
+async def get_chat_history(session_id: str):
     """Get conversation history for a session from MongoDB"""
     try:
         messages = get_conversation_from_db(session_id)
@@ -1380,6 +1399,17 @@ async def get_chat_history_endpoint(session_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
     
 
+@app.get("/sessions/{email}")
+async def get_all_sessions(email:str):
+    "Get all unique session ids"
+    try:
+        session_ids=get_all_session_ids(email=email)
+        return session_ids
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get sessions: {str(e)}")
+
+
+
 
 def field_exists(response: dict, field: str) -> bool:
     "checks if field exist in response"
@@ -1393,14 +1423,15 @@ def field_exists(response: dict, field: str) -> bool:
 @app.delete("/chat/sessions/{session_id}", response_model=StandardResponse)
 async def clear_chat_session(session_id: str):
     """Clear a chat session"""
-    if session_id in chat_sessions:
-        del chat_sessions[session_id]
+
+    try:
+        clear_conversation_from_db(session_id)
         return StandardResponse(
             success=True,
             message="Session cleared",
             data={"session_id": session_id}
         )
-    else:
+    except:
         return StandardResponse(
             success=False,
             message="Session not found",

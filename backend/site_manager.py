@@ -185,6 +185,13 @@ class SiteManager:
         """Create a site with only the location name"""
         url = f"{self.base_url}/customer/save_loc_by_only_name/"
         headers = self._get_headers()
+
+        existing_sites=self.get_all_sites().get('locations')
+        for site in existing_sites:
+            if site.get('location_name').lower() == location_name.lower():
+                return {
+                    'message':f"Site **{location_name}** already exist"
+                }
         
         payload = {
             "location_name": location_name
@@ -196,7 +203,9 @@ class SiteManager:
             
             data = response.json()
             logger.info(f"Site '{location_name}' created successfully with minimal data")
-            return data
+            return {
+                'message': f"✅ Site **{location_name}** created successfully!"
+            }
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to create site by name only: {e}")
@@ -492,11 +501,21 @@ class UserManager:
         }
         
         try:
+            existing_users=self.get_all_users()
+            for user in existing_users:
+                if user["email"] == email:
+                    return {
+                        'message':f"User **{first_name}** with email **{email}** already exist"
+                    }
+                
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             
             logger.info(f"User '{first_name}' created successfully")
-            return response.json()
+            response.json()
+            return {
+                'message': f"✅ User **{first_name} {last_name}** created successfully!"
+            }
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to create user '{first_name}': {e}")
@@ -1015,10 +1034,18 @@ class TemplateManager:
 
 
 
-    def create_checklist(self, checklist_id: int) -> Dict[str, Any]:
+    def create_checklist(self, checklist_id: int,checklist_name:str) -> Dict[str, Any]:
         """Save a new checklist"""
         url = f"{self.base_url}/customer/get_checklist_convert_into_meta/{checklist_id}/"
         headers = self._get_headers()
+
+        existing_checklists=self.get_all_templates()
+
+        for checklist in existing_checklists:
+            if checklist.get('name').lower()==checklist_name.lower():
+                return{
+                    'message': f"Checklist **{checklist_name}** already exist"
+                }
 
 
         try:
@@ -1026,7 +1053,10 @@ class TemplateManager:
             response.raise_for_status()
 
             logger.info(f"Checklist  saved successfully")
-            return response.json()
+            response.json()
+            return{
+                'message':f"✅ Template **{checklist_name}** created successfully!"
+            }
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to save checklist '{checklist_id}': {e}")
             raise PulseProAPIException(f"Checklist save failed: {e}")
