@@ -9,6 +9,7 @@ import logging
 import json
 
 
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -114,6 +115,29 @@ def store_session_intent(session_id, session_intent):
         logger.error(f"Failed to update intent in MongoDB: {e}")
         return False
 
+
+
+def get_last_session(email: str):
+    """Fetch the most recent session ID for a user based on timestamp"""
+    try:
+        # Use async MongoDB client
+        print("inside last session")
+        last_conversation = conversations_collection.find_one(
+            {"email": email},
+            sort=[("timestamp", -1)]
+        )
+        
+        if last_conversation:
+            print("session id: ",last_conversation  )
+            return last_conversation.get("session_id")
+        else:
+            logger.info(f"No conversations found for email: {email}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Failed to fetch last session_id from MongoDB: {e}")
+        return None
+    
 
 def safe_extract_text(response):
     try:

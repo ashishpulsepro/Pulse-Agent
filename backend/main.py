@@ -19,7 +19,7 @@ from LLM.initialize_llm import get_gemini_client
 from services.User_Service import UserManager
 
 
-from db.db_services import save_conversation_to_db,get_conversation_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent
+from db.db_services import save_conversation_to_db,get_conversation_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent,get_last_session
 
 import logging
 import json
@@ -266,11 +266,27 @@ async def get_all_sessions(email:str):
     "Get all unique session ids"
     try:
         session_ids=get_all_session_ids(email=email)
+        print("last session: ", get_last_session(email=email))
         return session_ids
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get sessions: {str(e)}")
 
 
+
+@app.get("/sessions/{email}/last")
+async def get_last_session_by_email(email: str):
+    try:
+        print("inside api")
+        last_session = get_last_session(email)
+        
+        if last_session:
+            return {"session_id": last_session}
+        else:
+            return {"session_id": None, "message": "No sessions found"}
+            
+    except Exception as e:
+        logger.error(f"Error in get_last_session endpoint: {e}")
+        return {"error": "Failed to fetch last session"}
 
 
 @app.delete("/chat/sessions/{session_id}", response_model=StandardResponse)

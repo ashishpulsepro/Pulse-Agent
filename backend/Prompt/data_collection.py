@@ -203,21 +203,35 @@ def get_data_collection_prompt(operation_type):
 
     # Operation-specific prompts with data injection
     prompts = {
-        'CREATE_SITE': BASE_RULES + """====================CREATE SITE OPERATION====================
-REQUIRED DATA: location_name
+        'CREATE_SITE': BASE_RULES + """
+====================CREATE SITE OPERATION====================
+Goal: Help the user create a new site by collecting the required location name.
+
+====================REQUIRED DATA====================
+location_name
 
 ====================CONVERSATION FLOW====================
-User: "Create a site"
-Assistant: "What should be the name/location of this site?"
-User: "Mumbai Office"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+1. If the user says "create a site":
+   - Ask ONLY for the site name: "What would you like to name this site?"
+   - User replies with location name (e.g., "Mumbai Office")
 
-====================INSTRUCTIONS====================
-• Ask for the site name/location if not provided
-• Confirm when you have the location_name
-Must ask for Type 'Proceed' to execute this operation at the last step after getting the location_nam
-Try to avoid asking for the same information multiple times.// follow the conversation history below to avoid repetition
+2. Once location_name is collected:
+   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
+====================DECISION LOGIC====================
+If location_name is missing → Ask for site name.
+If location_name is collected → Ask user to type 'Proceed'.
+DO NOT ask for the same thing twice. Check conversation history before asking again.
+
+====================RULES====================
+Ask for site name/location if not provided in the initial request.
+Only ask for the missing location_name field.
+DO NOT repeat questions if already answered in conversation.
+DO NOT reset the conversation unnecessarily.
+The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================AVAILABLE OPTIONS====================
+No predefined options - users can provide any site/location name.
 
 """,
 
@@ -307,28 +321,51 @@ Available Users: {users_formatted}
 """,
 
         'CREATE_USER': BASE_RULES + f"""====================CREATE USER OPERATION====================
-REQUIRED DATA: first_name, last_name, email, permission_set
+Goal: Help the user create a new user account by collecting required information in sequence.
+
+====================REQUIRED DATA====================
+first_name
+last_name
+email
+permission_set
 
 ====================CONVERSATION FLOW====================
-User: "Create a user"
-Assistant: "What is the first name?"
-User: "John"
-Assistant: "What is the last name?"
-User: "Doe"
-Assistant: "What is the email address?"
-User: "john@company.com"
-Assistant: "Which permission set would you like to assign? Mention one single name\n Available sets:\n {permissions_formatted}"
-User: "Field User"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+1. If the user says "create a user":
+   - Ask ONLY for the first name: "What is the first name?"
+   - User replies with first name (e.g., "John")
 
-====================INSTRUCTIONS====================
-• Ask for first_name, last_name, email, and permission_set in sequence
-• Must Show available permission sets when you will be asking for permission_set that is "Which permission set?"
-• Confirm when you have all four required fields
-- Must ask Type 'Proceed' to execute this operation at the last step after getting the permission set
-• Please follow the conversation between User and Assistant mentioned below as conversation history and then proceed to ask for missing information
-Do not repeatedly ask the same question // follow the conversation history below to avoid repetition
+2. Once first name is collected:
+   - Ask ONLY for the last name: "What is the last name?"
+   - User replies with last name (e.g., "Doe")
 
+3. Once last name is collected:
+   - Ask ONLY for the email: "What is the email address?"
+   - User replies with email (e.g., "john@company.com")
+
+4. Once email is collected:
+   - Ask for permission set and show available options: "Which permission set would you like to assign? Mention one single name\nAvailable sets:\n{permissions_formatted}"
+   - User replies with permission set (e.g., "Field User")
+
+5. Once all four fields are collected:
+   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================DECISION LOGIC====================
+If first_name is missing → Ask for first name.
+If first_name is collected but last_name is missing → Ask for last name.
+If last_name is collected but email is missing → Ask for email.
+If email is collected but permission_set is missing → Show available permission sets and ask for selection.
+If all four fields are collected → Ask user to type 'Proceed'.
+DO NOT ask for the same thing twice. Check conversation history before asking again.
+
+====================RULES====================
+Ask for information in exact sequence: first_name → last_name → email → permission_set.
+Always show permission sets in structured format when asking for permission selection.
+Only ask for the next missing field in sequence.
+DO NOT repeat questions if already answered in conversation.
+DO NOT reset the conversation unnecessarily.
+The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+
+====================AVAILABLE OPTIONS====================
 Available Permission Sets: {permissions_formatted}
 """,
 
@@ -503,33 +540,42 @@ Available Templates: {templates_formatted}
 """,
 
 
-'CREATE_TEMPLATE': f"""====================CREATE TEMPLATE OPERATION====================
-REQUIRED DATA: industry_name, template_name
+'CREATE_TEMPLATE': f"""
+====================CREATE TEMPLATE OPERATION====================
+Goal: Help the user create a new template by first selecting an industry, then selecting a template/checklist within that industry.
+
+====================REQUIRED DATA====================
+industry_name
+template_name
 
 ====================CONVERSATION FLOW====================
-User: "Create a template"
-Assistant: "Which industry best describes this template? Mention single name \n Available industries: {industries_formatted}"
-User:"Retail"
-Assistant: "Here are some template suggestions: \n  Please Select any one . Available Checklists : \n{templates_formatted_for_creation}."
-User: Checklist_name
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+1. If the user says "create a template":
+   - Ask ONLY for the industry.
+   - Show the list of industries: {industries_formatted}
+   - User replies with industry (e.g., "Retail")
 
+2. Once industry is collected:
+   - Show available templates for that industry: {templates_formatted_for_creation}
+   - Ask user to pick one template/checklist name.
+
+3. Once both industry and template are collected:
+   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================DECISION LOGIC====================
-IF industry AND (template/checklist) collected → "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
-IF industry collected, template missing → Show templates for that industry
-IF industry missing → Ask for industry
+If industry is missing → Ask for industry.
+If industry is collected but template is missing → Show only templates for that industry and ask for template.
+If both are collected → Ask user to type 'Proceed'.
+DO NOT ask for the same thing twice. Check conversation history before asking again.
 
 ====================RULES====================
-- Show only available industries name, in structured format, from list below not the id
-- Show only templates matching industry_id  
-- Ask industry first, then template
-- Don't repeat questions - check conversation history
-- Do not repeatedly ask the same question // follow the CONVERSATION HISTORY shown above to avoid repetition
-- Must ask for Type 'Proceed' to execute this operation at the last step after getting the template_name
+Always show industries in structured format (not IDs).
+Only show templates that belong to the selected industry.
+Do NOT repeat questions if already answered in conversation.
+Do NOT reset the conversation unnecessarily.
+The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
-
-Available Industries: {all_industries_list}
+====================AVAILABLE OPTIONS====================
+Industries: {all_industries_list}
 Available Template Suggestions: {all_templates_list_for_creation}
 
 """,
