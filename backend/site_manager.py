@@ -12,6 +12,11 @@ import logging
 import os
 from dotenv import load_dotenv
 
+import os
+import requests
+from fastapi import Depends, HTTPException, status, Request
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -91,7 +96,9 @@ class AuthenticationManager:
             'Referer': 'https://staging.pulsepro.ai/',
         }
 
-        refresh=os.getenv('refresh')
+        refresh = self.tokens.refresh_token 
+        if not refresh:
+            raise PulseProAPIException("No refresh token available")
         print("refresh token: ", refresh)
         payload = {"refresh": refresh}
         print("got it")
@@ -757,6 +764,44 @@ class UserManager:
         except requests.exceptions.RequestException as e:
             logger.error(e)
 
+
+    @staticmethod
+    def get_current_user(request: Request)->Dict[str,Any]:
+        """Dependency to verify user via /get_profile API"""
+
+        url=f"https://staging-api.pulsepro.ai/common/get_profile/"
+        print("inside get current user")
+        print("header: ", request.headers)
+
+        auth_header = request.headers.get("authorization")
+        print("auth_header: ", auth_header)
+        if not auth_header:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authorization header missing",
+            )
+        
+
+        try:
+            response = requests.get(
+                url,
+                headers={"Authorization": auth_header, "Accept": "application/json, text/plain, */*"}
+            )
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid or expired token",
+                )
+            return response.json()   # 👈 return the full profile dict
+        except requests.RequestException as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Profile service unavailable: {str(e)}",
+            )
+
+
+
+
     def get_all_members_not_added_to_group(self,group_id:int)->List[Dict[str,Any]]:
         """get all the users not added to the group"""
 
@@ -771,6 +816,16 @@ class UserManager:
             return data
         except requests.exceptions.RequestException as e:
             logger.error(e)
+
+
+
+
+
+
+
+
+
+
 
 
 

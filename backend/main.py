@@ -371,11 +371,16 @@ def safe_extract_text(response):
         print(f"Error extracting text: {e}")
         return ""
 
-
+from site_manager import UserManager
 
 @app.post("/chat/onboarding", response_model=ChatResponse)
-async def chat_with_agent_onboarding(chat_request: ChatRequest):
+async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dict = Depends(UserManager.get_current_user)):
     """onboarding chat with agent"""
+
+    auth = AuthenticationManager()
+    auth.set_refresh_token(refresh_token=os.getenv('refresh'))
+
+    print(f"Authenticated user: {current_user['email']}")
 
     print("inside chat onboarding")
     session_id = chat_request.session_id or str(uuid.uuid4())
@@ -442,8 +447,16 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest):
         
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_with_agent(chat_request: ChatRequest):
+async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends(UserManager.get_current_user)):
     """Two-phase chat agent: Phase 1 (Chat) → Phase 2 (Execute)"""
+
+
+    auth = AuthenticationManager()
+    auth.set_refresh_token(refresh_token=os.getenv('refresh'))
+
+    print(f"Authenticated user: {current_user['email']}")
+
+
     print("inside chat")
     session_id = chat_request.session_id or str(uuid.uuid4())
     intent = get_session_intent(session_id) or "UNKNOWN"

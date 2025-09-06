@@ -35,12 +35,16 @@ class ApiService {
   // Chat methods
   async sendMessage(message, sessionId = null) {
     // const access_token=localStorage.getItem("user").get("access_token")
-    // const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MDc0OTI3LCJqdGkiOiIwZTQ3YzE4YTU0NmM0M2YwODhmYmJlMWIzNWQwYzZjOSIsInVzZXJfaWQiOjc1Nn0.jSMt8bbIWrmuEKl_9UjFOpbj3hlITIi7h6h9nzU5JyA'
+    const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MTY3MjYzLCJqdGkiOiIzZjljYjk2OTc4MTk0Njc4OGYzYjMzN2ZiN2I4MmQ2MyIsInVzZXJfaWQiOjc1Nn0.yWkrb9SfeQqtLQDddMOH6ClWBnJxk6mHCYOAypbTgWU'
     // const email_id=await this.getUserEmail(access_token)
     // console.log("email: "+ email_id)
     const email_id="ashish@pulsepro.ai"
-    return this.request("/chat/onboarding", {
+    return this.request("/chat", {
       method: "POST",
+       headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${access_token}`, // ✅ add auth header
+    },
       body: JSON.stringify({
         message,
         session_id: sessionId,

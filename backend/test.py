@@ -230,3 +230,53 @@ except Exception as e:
 #         )
 
 
+
+
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from db import get_db_session, initialize_db
+from datetime import datetime, timezone
+
+app = FastAPI()
+
+engine, SessionLocal = initialize_db()
+
+@app.get("/ping-db")
+def ping_db(db: Session = Depends(get_db_session)):
+    # Check if there's any row in auth_user
+    results = db.execute(text('SELECT * FROM customer_location')).fetchall()
+    
+    # if result :
+    #     # Insert new data if table is empty
+    #     insert_query = text("""
+    #         INSERT INTO auth_user (
+    #             id, password, last_login, is_superuser, username, 
+    #             first_name, last_name, email, is_staff, is_active, date_joined
+    #         ) VALUES (
+    #             :id, :password, :last_login, :is_superuser, :username, 
+    #             :first_name, :last_name, :email, :is_staff, :is_active, :date_joined
+    #         )
+    #         RETURNING *;
+    #     """)
+        
+    #     new_user = {
+    #         "id": 244567890,
+    #         "password": "New pass",
+    #         "last_login": None,
+    #         "is_superuser": False,
+    #         "username": "john.doe@pulsepro.ai",
+    #         "first_name": "John",
+    #         "last_name": "Doe",
+    #         "email": "john.doe@pulsepro.ai",
+    #         "is_staff": False,
+    #         "is_active": True,
+    #         "date_joined": datetime.now(timezone.utc)
+    #     }
+        
+    #     result = db.execute(insert_query, new_user).fetchone()
+    #     db.commit()
+
+    # Convert SQLAlchemy Row to dictionary
+    data = [dict(row._mapping) for row in results]
+    return {"data": data}
