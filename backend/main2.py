@@ -11,7 +11,7 @@ import logging
 from datetime import datetime
 
 # Import your site manager
-from site_manager import SiteManager, AuthenticationManager, SiteData, PulseProAPIException
+from frontend.site_manager import SiteManager, AuthenticationManager, SiteData, PulseProAPIException
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
