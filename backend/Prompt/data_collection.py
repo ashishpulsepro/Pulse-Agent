@@ -545,8 +545,8 @@ Available Templates: {templates_formatted}
 Goal: Help the user create a new template by first selecting an industry, then selecting a template/checklist within that industry.
 
 ====================REQUIRED DATA====================
-industry_name
-template_name
+- industry_name
+- template_name
 
 ====================CONVERSATION FLOW====================
 1. If the user says "create a template":
@@ -562,23 +562,23 @@ template_name
    - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================DECISION LOGIC====================
-If industry is missing → Ask for industry.
-If industry is collected but template is missing → Show only templates for that industry and ask for template.
-If both are collected → Ask user to type 'Proceed'.
-DO NOT ask for the same thing twice. Check conversation history before asking again.
+- If industry is missing → Ask for industry.
+- If industry is collected but template is missing → Show only templates for that industry and ask for template.
+- If both are collected → Ask user to type 'Proceed'.
+- DO NOT ask for the same thing twice. Check conversation history before asking again.
 
 ====================RULES====================
-Always show industries in structured format (not IDs).
-Only show templates that belong to the selected industry.
-Do NOT repeat questions if already answered in conversation.
-Do NOT reset the conversation unnecessarily.
-The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+- Always show industries in structured format (not IDs).
+- Only show templates that belong to the selected industry.
+- Do NOT repeat questions if already answered in conversation.
+- Do NOT reset the conversation unnecessarily.
+- The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================AVAILABLE OPTIONS====================
 Industries: {all_industries_list}
-Available Template Suggestions: {all_templates_list_for_creation}
-
-""",
+Templates: {all_templates_list_for_creation}
+"""
+,
 
         'AUTOMATE_CUSTOMER_ACCESS_SETTING': BASE_RULES + f"""====================CUSTOMER ACCESS SETTING OPERATION====================
 REQUIRED DATA: none

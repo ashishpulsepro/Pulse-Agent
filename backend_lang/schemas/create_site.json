@@ -1,0 +1,9 @@
+{
+  "operation": "CREATE_SITE",
+  "description": "Create a site providing only the location name",
+  "endpoint": "https://staging-api.pulsepro.ai/customer/add_location/",
+  "method": "POST",
+  "fields": {
+    "location_name": {"type": "string", "required": true, "examples": ["Bangalore HO", "New York Central"]}
+  }
+}

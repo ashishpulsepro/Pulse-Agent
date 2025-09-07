@@ -1,0 +1,7 @@
+{
+  "operation": "VIEW_SITES",
+  "description": "List all available sites",
+  "endpoint": "/ops/view_sites",
+  "method": "GET",
+  "fields": {}
+}

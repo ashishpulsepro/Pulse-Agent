@@ -1,0 +1,10 @@
+{
+  "operation": "ASSIGN_USERS_TO_SITE",
+  "description": "Assign one or more users to a site",
+  "endpoint": "/ops/assign_users_to_site",
+  "method": "POST",
+  "fields": {
+    "location_name": {"type": "string", "required": true},
+    "user_list": {"type": "array", "items": {"type": "string"}, "required": true, "minItems": 1}
+  }
+}

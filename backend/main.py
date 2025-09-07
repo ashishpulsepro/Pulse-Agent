@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, HTTPException, Depends, status, Body
+from fastapi import FastAPI, HTTPException, Depends, status, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -118,6 +118,12 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
     print(f"Session ID: {session_id}, Intent initial: {intent}")
 
     try:
+        # Accept refresh token via Authorization header (Bearer <token>)
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            os.environ["refresh"] = token  # Used by AuthenticationManager
+
         client = get_gemini_client(temperature=0.3)
         
         if session_id not in chat_sessions:
@@ -186,6 +192,12 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
     print(f"Session ID: {session_id}, Intent initial: {intent}")
     
     try:
+        # Accept refresh token via Authorization header (Bearer <token>)
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            os.environ["refresh"] = token  # Used by AuthenticationManager
+
         # client = get_ollama_client()
 
         client = get_gemini_client()

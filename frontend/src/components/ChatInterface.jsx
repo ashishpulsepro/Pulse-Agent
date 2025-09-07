@@ -188,7 +188,7 @@ return (
               </div>
               
               <div 
-                onClick={() => setInputMessage("Hey Pule, add a new user account ")}
+                onClick={() => setInputMessage("Hey Pulse, add a new user account ")}
                 className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-8 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-105"
               >
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{backgroundColor: '#B6EB7A'}}>
