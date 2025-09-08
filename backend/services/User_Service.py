@@ -325,6 +325,18 @@ class UserManager:
 
         auth_header = request.headers.get("authorization")
         print("auth_header: ", auth_header)
+        refresh=''
+        if auth_header.lower().startswith("bearer "):
+            refresh = auth_header.split(" ", 1)[1]
+        else:
+            refresh = auth_header
+        
+        auth = AuthenticationManager()
+        auth.set_refresh_token(refresh_token=refresh)
+
+        access=auth.get_access_token()
+        token_head=f"Bearer {access}"
+
         if not auth_header:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -335,7 +347,7 @@ class UserManager:
         try:
             response = requests.get(
                 url,
-                headers={"Authorization": auth_header, "Accept": "application/json, text/plain, */*"}
+                headers={"Authorization": token_head, "Accept": "application/json, text/plain, */*"}
             )
             if response.status_code != 200:
                 raise HTTPException(
