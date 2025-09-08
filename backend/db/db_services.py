@@ -52,26 +52,24 @@ def get_conversation_from_db(session_id: str) -> list:
     try:
         messages = conversations_collection.find(
             {"session_id": session_id,"active":True}
-        ).sort("timestamp", 1)
+        ).sort([("timestamp", 1), ("_id", 1)])
         return list(messages)
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
     
 
-def get_complete_conversation_from_db(session_id:str)->list:
+def get_complete_conversation_from_db(session_id: str) -> list:
     """Get all conversation history from MongoDB"""
-
     try:
         messages = conversations_collection.find(
             {"session_id": session_id}
-        ).sort("timestamp", 1)
+        ).sort([("timestamp", 1), ("_id", 1)])  # ✅ fallback on _id when timestamp is same
         return list(messages)
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
-
-
+    
 def get_all_session_ids(email:str) -> list:
     """Fetch all unique session IDs from MongoDB"""
     try:

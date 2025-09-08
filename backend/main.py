@@ -266,7 +266,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
 
 @app.get("/chat/history/{session_id}")
 async def get_chat_history(session_id: str):
-    """Get conversation history for a session from MongoDB"""
+    """Get pending conversation history for a last session from MongoDB"""
     try:
         messages = get_conversation_from_db(session_id)
         return {
@@ -275,7 +275,7 @@ async def get_chat_history(session_id: str):
                 {
                     "role": msg["role"],
                     "message": msg["message"], 
-                    "timestamp": msg["timestamp"].isoformat()
+                    "timestamp": msg["timestamp"].isoformat() if "timestamp" in msg else str(msg["_id"].generation_time)
                 } for msg in messages
             ]
         }
@@ -293,14 +293,15 @@ async def get_complete_chat_history(session_id: str):
             "conversation": [
                 {
                     "role": msg["role"],
-                    "message": msg["message"], 
-                    "timestamp": msg["timestamp"].isoformat()
+                    "message": msg["message"],
+                    # convert either timestamp or ObjectId to ISO
+                    "timestamp": msg.get("timestamp").isoformat() if "timestamp" in msg else str(msg["_id"].generation_time)
                 } for msg in messages
             ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
-    
+
 
 @app.get("/sessions/{email}")
 async def get_all_sessions(email:str):
