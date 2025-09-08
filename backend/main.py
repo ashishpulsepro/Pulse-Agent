@@ -109,10 +109,13 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
     auth.set_refresh_token(refresh_token=os.getenv('refresh'))
 
     print(f"Authenticated user: {current_user['email']}")
+    valid_intents=["CREATE_SITE","CREATE_USER","CREATE_TEMPLATE"]
 
     print("inside chat onboarding")
     session_id = chat_request.session_id or str(uuid.uuid4())
     intent = get_session_intent(session_id) or "UNKNOWN_1"
+    if intent not in valid_intents:
+        intent="UNKNOWN_1"
     user_message = chat_request.message.strip()
     email=chat_request.email.strip()
     print(f"Session ID: {session_id}, Intent initial: {intent}")
@@ -142,7 +145,6 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
                 data={}
             )
 
-        valid_intents=["CREATE_SITE","CREATE_USER","CREATE_TEMPLATE"]
 
         if intent == 'UNKNOWN_1':
             intent = await execute_phase_0(session_id, user_message)
@@ -154,7 +156,7 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
 
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
         if user_message.lower().strip() in execution_triggers:
-            return await execute_phase_2(session_id, intent)
+            return await execute_phase_2(session_id, intent,email=email)
         
         print("Proceeding to Phase 1 chat...")
         return await execute_phase_1(session_id, user_message, client,intent,email=email,onboarding=True)

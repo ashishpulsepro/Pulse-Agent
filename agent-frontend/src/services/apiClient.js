@@ -49,7 +49,7 @@ class ApiClient {
   async sendOnboardingMessage(message, sessionId = null){
 
     // const access_token=localStorage.getItem("user").get("access_token")
-    const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MzE2MDI5LCJqdGkiOiI0ZTFkMGZiMDViMzU0NTUwYmY0NjM4NDQ0Y2IyNDU5MyIsInVzZXJfaWQiOjc1Nn0.8_09cRCQ9MWGnKgbRWGgQTO0PC89EarzJSX04BLjeE8'
+    const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MzE3NzY1LCJqdGkiOiIwODVjNmJjNDdlOWU0OTYyOTNlMjdlOWUxMjAyNDE3ZiIsInVzZXJfaWQiOjc1Nn0.foiP-eBvJDerIIGEQFvr4j5rxp615F9dfb8dxth8QO8'
     // const email_id=await this.getUserEmail(access_token)
     // console.log("email: "+ email_id)
   const email_id = localStorage.getItem('PULSE_USER_EMAIL') || 'ashish@pulsepro.ai' // TODO: replace with real user profile

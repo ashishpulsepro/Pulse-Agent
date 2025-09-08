@@ -35,8 +35,7 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
     # Improved intent detection prompt
     intent_prompt = f"""You are a PulsePro intent classifier.
 
-ANALYZE the user message and conversation history to determine the user's intent. Focus on the most RECENT user message. that means the last message from the user in the conversation history.
-
+ANALYZE the user message and conversation history to determine the user's intent. 
 USER MESSAGE: "{user_message}"
 
 CONVERSATION HISTORY:
@@ -56,12 +55,12 @@ INTENTS:
 - ASSIGN_PERMISSION_SET_TO_USER: give/assign permissions/roles/access to user/employee or give/assign user/employee permissions/roles/access
 - UNASSIGN_PERMISSION_SET_FROM_USER: remove/take permissions/roles/access from user/employee or remove/take user/employee permissions/roles/access
 - DELETE_TEMPLATE: delete/remove template/checklist/form
-- CREATE_SITE: create/add/make/new/open site/office/location/branch
+- CREATE_SITE: create/add/make/new/open/set up site/office/location/branch
 - DELETE_SITE: delete/remove/close site/office/location/branch
 - VIEW_SITES: show/list/see/get all sites/offices/locations/branches
 - ASSIGN_USERS_TO_SITE: assign/add/move user/employee to site/office/location or assign/add/move site/office/location to user/employee
 - UNASSIGN_USERS_FROM_SITE: remove/take user/employee from site/office/location or remove/take site/office/location from user/employee
-- CREATE_USER: create/add/make/new user/employee/account/person
+- CREATE_USER: create/add/make/set up/new user/account/employee/person
 - DELETE_USER: delete/remove user/employee/account/person
 - VIEW_USERS: show/list/see/get all users/employees/accounts/people
 - VIEW_ALL_GROUPS: state/show/list/see all the groups in the system

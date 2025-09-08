@@ -68,7 +68,7 @@ async def execute_phase_2(session_id: str,intent:str,email:str, client=get_gemin
         
         # Clear conversation after execution
         clear_conversation_from_db(session_id)
-        save_conversation_to_db(email=email,message=execution_result["message"],session_id=session_id,role="Assistant",intent=intent,)
+        save_conversation_to_db(email=email,message=execution_result["message"],session_id=session_id,role="Assistant",intent='UNKNOWN')
         
         return ChatResponse(
             message=execution_result["message"],
