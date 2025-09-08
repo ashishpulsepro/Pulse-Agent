@@ -5,12 +5,16 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 // NOTE: For now, we read a refresh token from localStorage.
 // Later, replace getAuthToken() with your real auth flow (access token or cookie).
 function getAuthToken() {
-  // Try a few common keys; primary is PULSE_REFRESH_TOKEN for clarity
+  const user = JSON.parse(localStorage.getItem('user'))
   return (
-    localStorage.getItem('PULSE_REFRESH_TOKEN') ||
-    localStorage.getItem('refresh_token') ||
-    localStorage.getItem('access_token') ||
-    null
+    user && user.refresh_token
+  )
+}
+
+function getUserEmail() {
+  const user = JSON.parse(localStorage.getItem('user'))
+  return (
+    user && user.email
   )
 }
 
@@ -21,7 +25,7 @@ class ApiClient {
 
   async request(endpoint, options = {}){
     const url = `${this.baseURL}${endpoint}`
-    const token = getAuthToken()
+    const token = getAuthToken() || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1OTA1NjkzNiwianRpIjoiYjE2YTNkMzQ4ZjkyNDQ5ODhkOWQ0YmEyZDJkZDM5ZDMiLCJ1c2VyX2lkIjo3NTd9.nyJC9VWadXjWLuskYGhGlYMTRpVdx-04tlc1ZGVJyIE'
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -43,7 +47,7 @@ class ApiClient {
 
   // Onboarding chat (existing backend)
   async sendOnboardingMessage(message, sessionId = null){
-  const email = localStorage.getItem('PULSE_USER_EMAIL') || 'ashish@pulsepro.ai' // TODO: replace with real user profile
+  const email = getUserEmail() || 'areeb@pulsepro.ai'
     return this.request('/chat/onboarding', {
       method: 'POST',
       body: JSON.stringify({ message, session_id: sessionId, email })
@@ -53,7 +57,7 @@ class ApiClient {
   // Placeholder for future agent chat
   async sendAgentMessage(message, sessionId = null){
     // TODO: update endpoint once available
-    return this.request('/chat/agent', {
+    return this.request('sendAgentMessage', {
       method: 'POST',
       body: JSON.stringify({ message, session_id: sessionId })
     })

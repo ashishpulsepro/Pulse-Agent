@@ -1,9 +1,0 @@
-{
-  "operation": "CREATE_TEMPLATE",
-  "description": "Create a checklist/template from a ready-made checklist name",
-  "endpoint": "/ops/create_template",
-  "method": "POST",
-  "fields": {
-    "template_name": {"type": "string", "required": true, "examples": ["Food Safety Checklist", "Fire Audit"]}
-  }
-}
