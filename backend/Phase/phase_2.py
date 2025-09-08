@@ -1,7 +1,7 @@
 
 import logging
 import json
-from db.db_services import get_conversation_from_db,clear_conversation_from_db
+from db.db_services import get_conversation_from_db,clear_conversation_from_db,save_conversation_to_db
 from LLM.initialize_llm import get_gemini_client
 from Phase.execute_operation import execute_site_operation
 
@@ -24,7 +24,7 @@ class ChatResponse(BaseModel):
     session_intent: Optional[str] = None
 
 from Prompt.json_conversion import get_json_response_prompt
-async def execute_phase_2(session_id: str,intent:str, client=get_gemini_client(temperature=0.05)) -> ChatResponse:
+async def execute_phase_2(session_id: str,intent:str,email:str, client=get_gemini_client(temperature=0.05)) -> ChatResponse:
     """Phase 2: Generate JSON and execute operation"""
     
     try:
@@ -68,6 +68,7 @@ async def execute_phase_2(session_id: str,intent:str, client=get_gemini_client(t
         
         # Clear conversation after execution
         clear_conversation_from_db(session_id)
+        save_conversation_to_db(email=email,message=execution_result["message"],session_id=session_id,role="Assistant",intent=intent,)
         
         return ChatResponse(
             message=execution_result["message"],

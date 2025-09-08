@@ -35,7 +35,7 @@ class ApiService {
   // Chat methods
   async sendMessage(message, sessionId = null) {
     // const access_token=localStorage.getItem("user").get("access_token")
-    const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MTg1NTA0LCJqdGkiOiIxNTUyNzRlN2Q3Nzg0YTc2OTUxN2JmY2UzYTliYThmNyIsInVzZXJfaWQiOjc1Nn0.vvx0cDqN4isGRZq0hEXYgH-a4y6B-jiJ72BsBIoERqw'
+    const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MTg2MTg3LCJqdGkiOiI2NDhhNGNiYTY0ODM0ZDE0YWNhOWIyMDY3NTE0OGFkZiIsInVzZXJfaWQiOjc1Nn0.Q3VvGcVrxOZ83UVQkXafGuRvV3jyNSO9Bdgruywb4z4'
     // const email_id=await this.getUserEmail(access_token)
     // console.log("email: "+ email_id)
     const email_id="ashish@pulsepro.ai"

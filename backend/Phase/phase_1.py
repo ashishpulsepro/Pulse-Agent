@@ -92,7 +92,7 @@ Never abruptly shut down conversations - redirect helpfully.
 "Welcome to PulsePro! I'm here to help you get set up. Most users start with:
 • **Site Creation** - Set up and configure your PulsePro site
 • **User Account Setup** - Create profiles and manage permissions  
-• **Checklist Creation** - Build custom templates and workflows
+• **Checklist Creation** - Build industry standard checklists
 
 What sounds most relevant to where you are, or would you like me to recommend a starting point?"
 

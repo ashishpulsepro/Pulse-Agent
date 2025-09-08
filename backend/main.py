@@ -118,11 +118,11 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
     print(f"Session ID: {session_id}, Intent initial: {intent}")
 
     try:
-        # Accept refresh token via Authorization header (Bearer <token>)
-        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
-        if auth_header and auth_header.lower().startswith("bearer "):
-            token = auth_header.split(" ", 1)[1].strip()
-            os.environ["refresh"] = token  # Used by AuthenticationManager
+        # # Accept refresh token via Authorization header (Bearer <token>)
+        # auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        # if auth_header and auth_header.lower().startswith("bearer "):
+        #     token = auth_header.split(" ", 1)[1].strip()
+        #     os.environ["refresh"] = token  # Used by AuthenticationManager
 
         client = get_gemini_client(temperature=0.3)
         
@@ -192,11 +192,11 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
     print(f"Session ID: {session_id}, Intent initial: {intent}")
     
     try:
-        # Accept refresh token via Authorization header (Bearer <token>)
-        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
-        if auth_header and auth_header.lower().startswith("bearer "):
-            token = auth_header.split(" ", 1)[1].strip()
-            os.environ["refresh"] = token  # Used by AuthenticationManager
+        # # Accept refresh token via Authorization header (Bearer <token>)
+        # auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        # if auth_header and auth_header.lower().startswith("bearer "):
+        #     token = auth_header.split(" ", 1)[1].strip()
+        #     os.environ["refresh"] = token  # Used by AuthenticationManager
 
         # client = get_ollama_client()
 
@@ -228,11 +228,13 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
             store_session_intent(session_id, intent)
             print(f"Intent after phase 0: {intent}")
         
+        import inspect
+        print(inspect.signature(execute_phase_2))
 
         
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
         if user_message.lower().strip() in execution_triggers:
-            return await execute_phase_2(session_id, intent)
+            return await execute_phase_2(session_id=session_id,intent=intent, email=current_user['email'])
         
         # Phase 1: Continue conversation
         print("Proceeding to Phase 1 chat...")
@@ -319,38 +321,7 @@ async def clear_chat_session(session_id: str):
             data={"session_id": session_id}
         )
 
-@app.get("/chat/health", response_model=StandardResponse)
-async def chat_health_check():
-    """Check if chat system is ready"""
-    try:
-        client = get_gemini_client()
-        
-        # Quick test
-        response = client.generate(
-            model="llama3.1:8b",
-            prompt="Say 'OK'",
-            options={"num_predict": 5}
-        )
-        
-        return StandardResponse(
-            success=True,
-            message="Chat system is healthy",
-            data={
-                "status": "ready",
-                "model": "llama3.1:8b",
-                "test_response": response['response'].strip()
-            }
-        )
-        
-    except Exception as e:
-        return StandardResponse(
-            success=False,
-            message="Chat system is unhealthy",
-            data={
-                "status": "error",
-                "error": str(e)
-            }
-        )
+
 
 
 # ============================================

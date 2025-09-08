@@ -9,14 +9,14 @@
     "preview": "vite preview --port 5174"
   },
   "dependencies": {
+    "bootstrap": "5.3.3",
+    "classnames": "2.5.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "reactstrap": "9.2.2",
-    "bootstrap": "5.3.3",
-    "classnames": "2.5.1"
+    "reactstrap": "9.2.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "4.3.1",
-    "vite": "5.4.5"
+    "vite": "^5.4.5"
   }
 }
