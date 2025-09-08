@@ -44,6 +44,7 @@ class ChatRequest(BaseModel):
     user_id: Optional[str] = Field(None, description="User ID")
     session_intent: Optional[str] = Field(None, description="Detected intent for the session")
     email:str=Field(...,description="email of the user")
+    refresh_token: Optional[str] = Field(None, description="Refresh token for authentication")
 
 
 class ChatResponse(BaseModel):
@@ -106,7 +107,9 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
     """onboarding chat with agent"""
 
     auth = AuthenticationManager()
-    auth.set_refresh_token(refresh_token=os.getenv('refresh'))
+    print("refresh: ", chat_request.refresh_token)
+    refresh= chat_request.refresh_token
+    auth.set_refresh_token(refresh_token=refresh)
 
     print(f"Authenticated user: {current_user['email']}")
     valid_intents=["CREATE_SITE","CREATE_USER","CREATE_TEMPLATE"]
@@ -181,8 +184,9 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
 
 
     auth = AuthenticationManager()
-    auth.set_refresh_token(refresh_token=os.getenv('refresh'))
-
+    print("refresh: ", chat_request.refresh_token)
+    refresh= chat_request.refresh_token
+    auth.set_refresh_token(refresh_token=refresh)
     print(f"Authenticated user: {current_user['email']}")
 
 

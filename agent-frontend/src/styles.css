@@ -1,6 +1,7 @@
 /* Layout: full-height app */
 html, body, #root { height: 100%; }
-body { margin: 0; overflow: hidden; }
+/* Allow natural page scroll so large hero section isn't clipped */
+body { margin: 0; /* overflow: hidden; */ }
 .app { height: 100%; display: flex; flex-direction: column; background: #f6f6f6; }
 /* .bw-navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: #fff; border-bottom: 1px solid #eee; height: var(--header-height); display: flex; align-items: center; } */
 .main-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -57,3 +58,12 @@ body { margin: 0; overflow: hidden; }
 /* Hide scrollbar in messages but keep scrolling */
 .messages { -ms-overflow-style: none; scrollbar-width: none; }
 .messages::-webkit-scrollbar { display: none; }
+
+/* New unified chat section scrollbar hiding */
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Unified section styling */
+.app-section { min-height: 100vh; }
+.app-section-inner { width: 100%; }
+.pulse-header { position: sticky; top: 0; z-index: 40; }

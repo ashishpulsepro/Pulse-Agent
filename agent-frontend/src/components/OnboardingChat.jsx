@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Alert, Button, Card, CardBody, Form, Input, InputGroup, InputGroupText, Spinner, Row, Col } from 'reactstrap'
+import { Spinner } from 'reactstrap'
 import { apiClient } from '../services/apiClient'
 import { generateSessionId, scrollToBottom, autoResizeTextarea, renderMarkdown } from '../utils/chatUtils'
 
@@ -55,177 +55,207 @@ export default function OnboardingChat(){
 
   return (
     <>
-      <div className="d-flex justify-content-between align-items-center mb-3 p-3 bg-white shadow-sm rounded-3 chat-header">
-        <div className="d-flex align-items-center gap-3" role="button" onClick={clearChat} title="Go to start" style={{cursor:'pointer'}}>
-          <div className="rounded-3 d-flex align-items-center justify-content-center" style={{width:40,height:40,background:'#111'}}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      {/* Global header */}
+      <header className="pulse-header w-100 px-4 md:px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur border-b border-gray-200">
+        <div className="flex items-center gap-3 select-none">
+          <div className="h-10 w-10 rounded-xl bg-gray-900 flex items-center justify-center text-white shadow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           </div>
-          <div>
-            <div className="fw-semibold">PulsePro AI</div>
-            <div className="text-muted small">User Assistant</div>
+          <div className="leading-tight">
+            <div className="font-semibold text-gray-900 text-sm md:text-base">Pulse Assistant</div>
+            <div className="text-[11px] md:text-xs text-gray-500 flex items-center gap-1">
+              <span className="inline-flex h-2 w-2 rounded-full bg-green-500" /> Online
+            </div>
           </div>
         </div>
-        <Button color="link" className="text-muted" onClick={clearChat} title="Clear chat">Clear</Button>
-      </div>
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={clearChat}
+              className="group flex items-center gap-2 text-xs md:text-sm text-gray-500 hover:text-red-600 font-medium px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
+              title="Clear chat"
+              type="button"
+            >
+              <i className="fa-solid fa-trash-can text-[13px] group-hover:scale-110 transition-transform" />
+              <span>Clear</span>
+            </button>
+          )}
+        </div>
+      </header>
     <div className="px-3 pt-3 onboarding-container">
       <div className="centered-content">
       {/* Header */}
 
       {/* Empty state hero and feature cards */}
       {messages.length === 0 && (
-        <div className="empty-layout">
-          <div className="text-center mb-4">
-            <div className="mx-auto mb-3 rounded-4 d-flex align-items-center justify-content-center" style={{width:64,height:64,background:'#111'}}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <section
+          id="ai-assistant-hero"
+          className="relative app-section bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col items-center px-6 pt-14 pb-20 w-full rounded-3xl shadow-sm border border-gray-200 overflow-visible"
+          style={{minHeight:'80vh'}}
+        >
+          <div className="w-full max-w-5xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+              <i className="fa-solid fa-sparkles text-blue-600" />
+              AI-Powered Assistant
             </div>
-            <h2 className="fw-bold mb-2">Become Friction-less with <span>⚡ PulsePro</span></h2>
-            <p className="text-muted">Make your onboarding process seamless, simply by chatting with Pulse Agent</p>
-          </div>
-
-          {/* Wide input */}
-          <Card className="border-0 shadow-sm">
-            <CardBody className="p-2 p-md-3">
-              <Form onSubmit={handleSubmit}>
-                <InputGroup>
-                  <InputGroupText className="bg-transparent border-0">
-                    <div style={{color:'#777'}}>●</div>
-                  </InputGroupText>
-                  <Input
-                    type="textarea"
-                    innerRef={textareaRef}
-                    value={input}
-                    onChange={(e)=>setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask PulsePro to help you with anything..."
-                    disabled={loading}
-                    rows="1"
-                    style={{ minHeight: '30px', maxHeight: '30px', resize: 'none' }}
-                    className="border-0"
-                  />
-                  <Button type="submit" disabled={!input.trim() || loading}
-                    style={{
-                      background: '#111',
-                      border: 'none',
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      marginLeft: '8px'
-                    }}
-                  >
-                    {loading ? <Spinner size="sm" /> : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                    )}
-                  </Button>
-                </InputGroup>
-              </Form>
-            </CardBody>
-          </Card>
-
-          {/* Feature Cards at bottom */}
-          <Row className="g-3 cards-bottom">
-            <Col md="4">
-              <Card className="h-100 feature-card-light" onClick={()=>setInput('Hey Pulse help me create a new site.')}>
-                <CardBody className="text-center">
-                  <div className="mx-auto mb-2 rounded-3 d-inline-flex align-items-center justify-content-center" style={{width:48,height:48,background:'#f0f0f0'}}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                  </div>
-                  <div className="fw-semibold">Create Site</div>
-                  <div className="text-muted small">Create a new site</div>
-                </CardBody>
-              </Card>
-            </Col>
-            <Col md="4">
-              <Card className="h-100 feature-card-light" onClick={()=>setInput('Hey Pulse, add a new user account ')}>
-                <CardBody className="text-center">
-                  <div className="mx-auto mb-2 rounded-3 d-inline-flex align-items-center justify-content-center" style={{width:48,height:48,background:'#f0f0f0'}}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                  </div>
-                  <div className="fw-semibold">Create User</div>
-                  <div className="text-muted small">Add new user account</div>
-                </CardBody>
-              </Card>
-            </Col>
-            <Col md="4">
-              <Card className="h-100 feature-card-light" onClick={()=>setInput('Hey Pulse, prepare a checklist ')}>
-                <CardBody className="text-center">
-                  <div className="mx-auto mb-2 rounded-3 d-inline-flex align-items-center justify-content-center" style={{width:48,height:48,background:'#f0f0f0'}}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2"><path d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
-                  </div>
-                  <div className="fw-semibold">Create Template</div>
-                  <div className="text-muted small">Build your Checklist</div>
-                </CardBody>
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      )}
-
-      {/* Messages */}
-  <div className="chat-scroll-area">
-    <div className="messages">
-        {messages.map((m, i) => (
-          <div key={i} className={`mb-3 ${m.role==='user' ? 'text-end' : 'text-start'}`}>
-            <div className={`d-inline-block p-3 rounded-4 ${m.role==='user' ? '' : 'bg-white border'}`} style={m.role==='user' ? {background:'#111', color:'#fff'} : {}}>
-              {m.role === 'assistant' ? (
-                <div className="markdown-content">
-                  {renderMarkdown(m.content)}
-                </div>
-              ) : (
-                <div style={{whiteSpace:'pre-wrap'}}>{m.content}</div>
-              )}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="text-start mb-3">
-            <div className="d-inline-flex align-items-center gap-2 p-3 rounded-4 bg-white border">
-              <span className="spinner-grow spinner-grow-sm text-secondary" />
-              <span className="text-muted small">AI is thinking...</span>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-  </div>
-  </div>
-
-      {/* Bottom input when there are messages */}
-      {messages.length > 0 && (
-        <Card className="border-0 shadow-sm bottom-input">
-          <CardBody className="p-2 p-md-3">
-            <Form onSubmit={handleSubmit}>
-              <InputGroup>
-                <Input
-                  type="textarea"
-                  innerRef={textareaRef}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl fw-bold text-gray-900 mb-6 leading-tight">
+              Meet Your <span className="text-blue-600">AI Assistant</span>
+            </h1>
+            <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed px-2">
+              New here? Let our AI set you up in minutes. Add your first site, upload a template, or run your first report—just by asking.
+            </p>
+            {/* Primary prompt input styled with Tailwind but still using same handlers */}
+            <div className="max-w-3xl mx-auto mb-12 px-1">
+              <div className="relative">
+                <textarea
+                  ref={textareaRef}
                   value={input}
                   onChange={(e)=>setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your message..."
+                  rows={1}
+                  placeholder="What would you like me to help you with today?"
                   disabled={loading}
-                  rows="1"
-                  style={{ minHeight: '70px', maxHeight: '140px', resize: 'none' }}
-                  className="border-0"
+                  className="w-full px-6 py-5 text-base md:text-lg border-2 border-gray-200 rounded-2xl shadow-[0_8px_28px_-8px_rgba(0,0,0,0.15)] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 bg-white resize-none leading-relaxed"
+                  style={{minHeight:'64px',maxHeight:'140px'}}
                 />
-                <Button type="submit" disabled={!input.trim() || loading}
-                  style={{
-                    background: '#111',
-                    border: 'none',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    marginLeft: '8px'
-                  }}
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || loading}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-3 rounded-xl transition-colors duration-200 shadow"
                 >
-                  {loading ? <Spinner size="sm" /> : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                  )}
-                </Button>
-              </InputGroup>
-              <div className="text-muted small mt-2 text-center">Press Enter to send, Shift + Enter for new line</div>
-            </Form>
-          </CardBody>
-        </Card>
+                  {loading ? <Spinner size="sm" /> : <i className="fa-solid fa-paper-plane" />}
+                </button>
+              </div>
+              <div className="flex items-center justify-center gap-2 mt-4 text-sm text-gray-500">
+                <i className="fa-solid fa-lightbulb text-yellow-500" />
+                <span>Press Enter to send, Shift + Enter for a new line</span>
+              </div>
+            </div>
+
+            {/* Suggested prompts */}
+            <div className="space-y-4 max-w-5xl mx-auto px-1">
+              <p className="text-gray-600 font-medium mb-1 md:mb-2">Popular requests to get you started:</p>
+              <div className="flex flex-wrap justify-center gap-3 md:gap-4">
+                <button onClick={()=>setInput('Add a new site called Downtown Store')} className="prompt-pill bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 px-6 py-3 rounded-full text-gray-700 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                  <i className="fa-solid fa-building mr-2 text-blue-600" />
+                  Add a new site called Downtown Store
+                </button>
+                <button onClick={()=>setInput('Invite John as an inspector')} className="prompt-pill bg-white border border-gray-200 hover:border-green-300 hover:bg-green-50 px-6 py-3 rounded-full text-gray-700 hover:text-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                  <i className="fa-solid fa-user-plus mr-2 text-green-600" />
+                  Invite John as an inspector
+                </button>
+                <button onClick={()=>setInput('Create a weekly audit schedule for Site A')} className="prompt-pill bg-white border border-gray-200 hover:border-purple-300 hover:bg-purple-50 px-6 py-3 rounded-full text-gray-700 hover:text-purple-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                  <i className="fa-solid fa-calendar-check mr-2 text-purple-600" />
+                  Create a weekly audit schedule for Site A
+                </button>
+                <button onClick={()=>setInput('Share the mobile app download link with my team')} className="prompt-pill bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 px-6 py-3 rounded-full text-gray-700 hover:text-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                  <i className="fa-solid fa-share mr-2 text-indigo-600" />
+                  Share the mobile app download link with my team
+                </button>
+              </div>
+            </div>
+
+            {/* Feature trio */}
+            {/* <div className="mt-20 grid md:grid-cols-3 gap-10 max-w-4xl mx-auto">
+              <div className="text-center p-6">
+                <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <i className="fa-solid fa-wand-magic-sparkles text-2xl text-blue-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Natural Language</h3>
+                <p className="text-gray-600 text-sm">Speak naturally - no need to learn complex commands or navigate menus</p>
+              </div>
+              <div className="text-center p-6">
+                <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <i className="fa-solid fa-bolt text-2xl text-green-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Instant Actions</h3>
+                <p className="text-gray-600 text-sm">Watch your requests come to life immediately with smart automation</p>
+              </div>
+              <div className="text-center p-6">
+                <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <i className="fa-solid fa-brain text-2xl text-purple-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Context Aware</h3>
+                <p className="text-gray-600 text-sm">Understands your business needs and suggests relevant next steps</p>
+              </div>
+            </div> */}
+          </div>
+        </section>
       )}
 
-      {error && <Alert color="danger" className="mt-2">{error}</Alert>}
+      {/* Unified chat section when messages exist */}
+      {messages.length > 0 && (
+        <section
+          id="ai-chat-section"
+          className="relative app-section bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col items-center px-4 md:px-6 pt-14 pb-24 w-full rounded-3xl shadow-sm border border-gray-200 overflow-hidden"
+          style={{minHeight:'80vh'}}
+        >
+          <div className="w-full max-w-4xl mx-auto flex flex-col flex-1">
+            {/* Chat header with status + clear */}
+            
+
+            {/* Messages list */}
+            <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar space-y-4 pr-1" style={{scrollBehavior:'smooth'}}>
+              {messages.map((m,i)=> (
+                <div key={i} className={`flex ${m.role==='user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm md:text-base leading-relaxed shadow-sm max-w-[85%] whitespace-pre-wrap ${m.role==='user' ? 'bg-blue-600 text-white' : 'bg-white/70 backdrop-blur border border-gray-200 text-gray-900'}`}
+                  >
+                    {m.role==='assistant' ? (
+                      <div className="markdown-content text-gray-900">{renderMarkdown(m.content)}</div>
+                    ) : m.content}
+                  </div>
+                </div>
+              ))}
+              {error && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl px-4 py-3 bg-red-50 border border-red-300 text-red-700 text-sm flex items-start gap-2 max-w-[85%]">
+                    <i className="fa-solid fa-triangle-exclamation mt-0.5" />
+                    <span className="flex-1">{error}</span>
+                    <button onClick={()=>setError('')} className="text-xs underline decoration-dotted hover:text-red-800">dismiss</button>
+                  </div>
+                </div>
+              )}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl px-4 py-3 bg-white/70 backdrop-blur border border-gray-200 text-gray-500 text-sm flex items-center gap-2">
+                    <span className="spinner-grow spinner-grow-sm text-secondary" />
+                    AI is thinking...
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input area */}
+            <div className="mt-6">
+              <form onSubmit={handleSubmit} className="relative">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e)=>setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  placeholder="Type your message..."
+                  disabled={loading}
+                  className="w-full px-5 py-5 text-sm md:text-base border-2 border-gray-200 rounded-2xl shadow-[0_6px_24px_-10px_rgba(0,0,0,0.25)] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 bg-white resize-none leading-relaxed"
+                  style={{minHeight:'64px',maxHeight:'180px'}}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || loading}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-3 rounded-xl transition-colors duration-200 shadow"
+                >
+                  {loading ? <Spinner size="sm" /> : <i className="fa-solid fa-paper-plane" />}
+                </button>
+              </form>
+              <div className="text-xs md:text-sm text-gray-500 mt-3 text-center">Press Enter to send · Shift + Enter for new line</div>
+            </div>
+          </div>
+        </section>
+      )}
+
+  {/* Removed external Alert; errors now appear inline inside chat stream */}
       </div>
     </div>
     </>
