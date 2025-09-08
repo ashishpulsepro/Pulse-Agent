@@ -4,7 +4,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 // NOTE: For now, we read a refresh token from localStorage.
 // Later, replace getAuthToken() with your real auth flow (access token or cookie).
-function getAuthToken() {
+function getAccessToken() {
+  const user = JSON.parse(localStorage.getItem('user'))
+  return (
+    user && user.access_token
+  )
+}
+
+function getRefreshToken() {
   const user = JSON.parse(localStorage.getItem('user'))
   return (
     user && user.refresh_token
@@ -25,7 +32,8 @@ class ApiClient {
 
   async request(endpoint, options = {}){
     const url = `${this.baseURL}${endpoint}`
-    const token = getAuthToken() || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1OTA1NjkzNiwianRpIjoiYjE2YTNkMzQ4ZjkyNDQ5ODhkOWQ0YmEyZDJkZDM5ZDMiLCJ1c2VyX2lkIjo3NTd9.nyJC9VWadXjWLuskYGhGlYMTRpVdx-04tlc1ZGVJyIE'
+    const token = getAccessToken() || 
+    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MzE3NTIyLCJqdGkiOiI0OWJkNjg0NWZhOWE0YmE0OWIzZGU3OTk3ZTQ3Njc0MSIsInVzZXJfaWQiOjc1N30.J2RuwXxYApy5_1U3N0e1c6QxY1iG_A1tVeNVj2sLpm8'
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -70,7 +78,7 @@ class ApiClient {
   // Placeholder for future agent chat
   async sendAgentMessage(message, sessionId = null){
     // TODO: update endpoint once available
-    return this.request('sendAgentMessage', {
+    return this.request('/chat', {
       method: 'POST',
       body: JSON.stringify({ message, session_id: sessionId })
     })
