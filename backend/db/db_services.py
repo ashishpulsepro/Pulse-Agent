@@ -41,7 +41,8 @@ def save_conversation_to_db(session_id: str, role: str, message: str,email:str=N
             "role": role,
             "message": message,
             "timestamp": datetime.now(),
-            "intent": intent
+            "intent": intent,
+            "active":True
         })
     except Exception as e:
         logger.error(f"Failed to save to MongoDB: {e}")
@@ -50,7 +51,7 @@ def get_conversation_from_db(session_id: str) -> list:
     """Get conversation history from MongoDB"""
     try:
         messages = conversations_collection.find(
-            {"session_id": session_id}
+            {"session_id": session_id,"active":True}
         ).sort("timestamp", 1)
         return list(messages)
     except Exception as e:
@@ -72,12 +73,23 @@ def get_all_session_ids(email:str) -> list:
 
 
 
+# def clear_conversation_from_db(session_id: str):
+#     """Clear conversation history from MongoDB"""
+#     try:
+#         conversations_collection.delete_many({"session_id": session_id})
+#     except Exception as e:
+#         logger.error(f"Failed to clear from MongoDB: {e}")
+
 def clear_conversation_from_db(session_id: str):
-    """Clear conversation history from MongoDB"""
+    """Mark conversation as inactive in MongoDB instead of deleting"""
     try:
-        conversations_collection.delete_many({"session_id": session_id})
+        conversations_collection.update_many(
+            {"session_id": session_id},
+            {"$set": {"active": False}}  # 👈 soft delete
+        )
     except Exception as e:
         logger.error(f"Failed to clear from MongoDB: {e}")
+
 
 def get_session_intent(session_id):
     """Get the intent for a session from MongoDB"""
