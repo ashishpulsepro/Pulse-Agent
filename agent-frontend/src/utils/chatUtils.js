@@ -12,7 +12,15 @@ export const formatTimestamp = (timestamp) => {
 };
 
 export const scrollToBottom = (elementRef) => {
-  elementRef.current?.scrollIntoView({ behavior: "smooth" });
+  if (!elementRef.current) return;
+  const parent = elementRef.current.parentNode;
+  if (parent && parent.scrollTo) {
+    // Use instant jump to avoid layout shift of outer document; container already has smooth scroll behavior if desired
+    parent.scrollTop = parent.scrollHeight;
+  } else {
+    // Fallback to original behavior
+    elementRef.current.scrollIntoView({ block: 'end' });
+  }
 };
 
 export const autoResizeTextarea = (textarea) => {

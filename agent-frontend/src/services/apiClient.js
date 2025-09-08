@@ -5,19 +5,25 @@ const API_BASE_URL =
 
 // NOTE: For now, we read a refresh token from localStorage.
 // Later, replace getAuthToken() with your real auth flow (access token or cookie).
-function getAccessToken() {
-  const user = JSON.parse(localStorage.getItem("user"));
-  return  user.access_token;
-}
+// function getAccessToken() {
+//   const raw = localStorage.getItem("user");
+//   if (!raw) return null; // nothing stored
+//   const user = JSON.parse(raw);
+//   return user?.access_token || null;
+// }
 
 function getRefreshToken() {
-  const user = JSON.parse(localStorage.getItem("user"));
-  return user.refresh_token;
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  const user = JSON.parse(raw);
+  return user?.refresh_token || null;
 }
 
 function getUserEmail() {
-  const user = JSON.parse(localStorage.getItem("user"));
-  return  user.email;
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  const user = JSON.parse(raw);
+  return user?.email || null;
 }
 
 class ApiClient {
@@ -27,7 +33,6 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    const accessToken = getAccessToken() || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MzI1NzIzLCJqdGkiOiIzZDIwYTllZTZkYTA0NDI5OTljM2RiNTBlM2U0NmZkYyIsInVzZXJfaWQiOjc1N30.3NV636FHHAuTJ0pk27ID-xNZCN4IbpYaUpfq8q6iBxk';
     const refreshToken = getRefreshToken() || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODEwMTk1MCwianRpIjoiMTdlNzNhOGMyYTc2NDI2NGI3NDQzMDZhY2U2YjI2OTkiLCJ1c2VyX2lkIjo3NTd9.bgurTOG08Yz4HPqL77zYG9lBDscRfmkxhjZSDXWjvis';
 
     // If caller passed a plain object body, we'll JSON stringify here and append refresh token if not already present.
@@ -45,7 +50,7 @@ class ApiClient {
       body,
       headers: {
         "Content-Type": "application/json",
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), // send access token as 'Authorization'
+        ...(refreshToken ? { Authorization: `Bearer ${refreshToken}` } : {}), // send access token as 'Authorization'
         ...(options.headers || {}),
       },
     };

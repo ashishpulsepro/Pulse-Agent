@@ -11,9 +11,22 @@ export default function OnboardingChat(){
   const [sessionId, setSessionId] = useState(null)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const headerRef = useRef(null)
+  const [headerHeight, setHeaderHeight] = useState(0)
 
   useEffect(() => { setSessionId(generateSessionId()) }, [])
   useEffect(() => { scrollToBottom(messagesEndRef) }, [messages])
+  useEffect(() => {
+    const measure = () => {
+      if(headerRef.current){
+        const h = headerRef.current.offsetHeight || 0
+        setHeaderHeight(h)
+      }
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
   useEffect(() => { if(textareaRef.current) autoResizeTextarea(textareaRef.current) }, [input])
 
   const sendMessage = async () => {
@@ -56,7 +69,7 @@ export default function OnboardingChat(){
   return (
     <>
       {/* Global header */}
-      <header className="pulse-header w-100 px-4 md:px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur border-b border-gray-200">
+  <header ref={headerRef} className="pulse-header w-100 px-4 md:px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur border-b border-gray-200">
         <div className="flex items-center gap-3 select-none">
           <div className="h-10 w-10 rounded-xl bg-gray-900 flex items-center justify-center text-white shadow">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
@@ -91,7 +104,7 @@ export default function OnboardingChat(){
         <section
           id="ai-assistant-hero"
           className="relative app-section bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col items-center px-6 pt-14 pb-20 w-full rounded-3xl shadow-sm border border-gray-200 overflow-visible"
-          style={{minHeight:'80vh'}}
+          style={headerHeight ? {minHeight:`calc(100vh - ${headerHeight}px)`}: {minHeight:'100vh'}}
         >
           <div className="w-full max-w-5xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
@@ -102,7 +115,7 @@ export default function OnboardingChat(){
               Meet Your <span className="text-blue-600">AI Assistant</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed px-2">
-              New here? Let our AI set you up in minutes. Add your first site, upload a template, or run your first report—just by asking.
+              Tired of products and their complex workflows . Don't worry we've got you covered! Just Try out our new AI Assistant to make your onboarding process a breeze.
             </p>
             {/* Primary prompt input styled with Tailwind but still using same handlers */}
             <div className="max-w-3xl mx-auto mb-12 px-1">
@@ -134,19 +147,19 @@ export default function OnboardingChat(){
 
             {/* Suggested prompts */}
             <div className="space-y-4 max-w-5xl mx-auto px-1">
-              <p className="text-gray-600 font-medium mb-1 md:mb-2">Popular requests to get you started:</p>
+              <p className="text-gray-600 font-medium mb-1 md:mb-2">Let's get you started with the onboarding procedure:</p>
               <div className="flex flex-wrap justify-center gap-3 md:gap-4">
-                <button onClick={()=>setInput('Add a new site called Downtown Store')} className="prompt-pill bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 px-6 py-3 rounded-full text-gray-700 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                <button onClick={()=>setInput('Create a site')} className="prompt-pill bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 px-6 py-3 rounded-full text-gray-700 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md">
                   <i className="fa-solid fa-building mr-2 text-blue-600" />
                   Add a new site called Downtown Store
                 </button>
-                <button onClick={()=>setInput('Invite John as an inspector')} className="prompt-pill bg-white border border-gray-200 hover:border-green-300 hover:bg-green-50 px-6 py-3 rounded-full text-gray-700 hover:text-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                <button onClick={()=>setInput('Create a User')} className="prompt-pill bg-white border border-gray-200 hover:border-green-300 hover:bg-green-50 px-6 py-3 rounded-full text-gray-700 hover:text-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
                   <i className="fa-solid fa-user-plus mr-2 text-green-600" />
                   Invite John as an inspector
                 </button>
-                <button onClick={()=>setInput('Create a weekly audit schedule for Site A')} className="prompt-pill bg-white border border-gray-200 hover:border-purple-300 hover:bg-purple-50 px-6 py-3 rounded-full text-gray-700 hover:text-purple-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                <button onClick={()=>setInput('Create a template')} className="prompt-pill bg-white border border-gray-200 hover:border-purple-300 hover:bg-purple-50 px-6 py-3 rounded-full text-gray-700 hover:text-purple-700 transition-all duration-200 shadow-sm hover:shadow-md">
                   <i className="fa-solid fa-calendar-check mr-2 text-purple-600" />
-                  Create a weekly audit schedule for Site A
+                  Create an audit schedule for the NewYork Site
                 </button>
                 <button onClick={()=>setInput('Share the mobile app download link with my team')} className="prompt-pill bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 px-6 py-3 rounded-full text-gray-700 hover:text-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md">
                   <i className="fa-solid fa-share mr-2 text-indigo-600" />
@@ -187,15 +200,15 @@ export default function OnboardingChat(){
       {messages.length > 0 && (
         <section
           id="ai-chat-section"
-          className="relative app-section bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col items-center px-4 md:px-6 pt-14 pb-24 w-full rounded-3xl shadow-sm border border-gray-200 overflow-hidden"
-          style={{minHeight:'80vh'}}
+          className="relative app-section bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col items-center px-4 md:px-6 pt-14 pb-24 w-full rounded-3xl shadow-sm border border-gray-200"
+          style={headerHeight ? {minHeight:`calc(100vh - ${headerHeight}px)`}: {minHeight:'100vh'}}
         >
           <div className="w-full max-w-4xl mx-auto flex flex-col flex-1">
             {/* Chat header with status + clear */}
             
 
             {/* Messages list */}
-            <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar space-y-4 pr-1" style={{scrollBehavior:'smooth'}}>
+            <div className="space-y-4 pr-1">
               {messages.map((m,i)=> (
                 <div key={i} className={`flex ${m.role==='user' ? 'justify-end' : 'justify-start'}`}>
                   <div
