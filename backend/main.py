@@ -19,7 +19,7 @@ from LLM.initialize_llm import get_gemini_client
 from services.User_Service import UserManager
 
 
-from db.db_services import save_conversation_to_db,get_conversation_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent,get_last_session
+from db.db_services import save_conversation_to_db,get_conversation_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent,get_last_session,get_complete_conversation_from_db
 
 import logging
 import json
@@ -141,7 +141,11 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
             clear_conversation_from_db(session_id)
             return ChatResponse(
-                message="Operation cancelled. No action taken.",
+                message="""Operation cancelled. No action taken. Now you can start with new operation.\n 
+                • **Site Creation** - Set up and configure your PulsePro site
+                • **User Account Setup** - Create profiles and manage permissions  
+                • **Checklist Creation** - Build industry standard checklists
+                 """,
                 status="cancelled",
                 session_id=session_id,
                 context={"phase": "cancelled"},
@@ -222,7 +226,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
             clear_conversation_from_db(session_id)
             return ChatResponse(
-                message="Operation cancelled. No action taken.",
+                message="Operation cancelled. No action taken. Now you can start with new operation",
                 status="cancelled",
                 session_id=session_id,
                 context={"phase": "cancelled"},
@@ -279,7 +283,24 @@ async def get_chat_history(session_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
     
 
-
+@app.get("/chat/complete_history/{session_id}")
+async def get_complete_chat_history(session_id: str):
+    """Get conversation history for a session from MongoDB"""
+    try:
+        messages = get_complete_conversation_from_db(session_id)
+        return {
+            "session_id": session_id,
+            "conversation": [
+                {
+                    "role": msg["role"],
+                    "message": msg["message"], 
+                    "timestamp": msg["timestamp"].isoformat()
+                } for msg in messages
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
+    
 
 @app.get("/sessions/{email}")
 async def get_all_sessions(email:str):

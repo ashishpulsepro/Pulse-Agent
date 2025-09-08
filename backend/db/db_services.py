@@ -59,6 +59,19 @@ def get_conversation_from_db(session_id: str) -> list:
         return []
     
 
+def get_complete_conversation_from_db(session_id:str)->list:
+    """Get all conversation history from MongoDB"""
+
+    try:
+        messages = conversations_collection.find(
+            {"session_id": session_id}
+        ).sort("timestamp", 1)
+        return list(messages)
+    except Exception as e:
+        logger.error(f"Failed to get from MongoDB: {e}")
+        return []
+
+
 def get_all_session_ids(email:str) -> list:
     """Fetch all unique session IDs from MongoDB"""
     try:
@@ -96,7 +109,7 @@ def get_session_intent(session_id):
     try:
         # Find any document with the session_id that has an intent field
         session = conversations_collection.find_one(
-            {"session_id": session_id, "intent": {"$exists": True}},
+            {"session_id": session_id, "active":True,"intent": {"$exists": True}},
             sort=[("timestamp", -1)]  # Get the most recent one
         )
         print("session intent inside get_session_intent : ", session)

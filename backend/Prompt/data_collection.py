@@ -216,7 +216,7 @@ location_name
    - User replies with location name (e.g., "Mumbai Office")
 
 2. Once location_name is collected:
-   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================DECISION LOGIC====================
 If location_name is missing → Ask for site name.
@@ -240,7 +240,7 @@ REQUIRED DATA: no data needed
 
 ====================CONVERSATION FLOW====================
 User: "Show me all sites"
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed
@@ -255,7 +255,7 @@ REQUIRED DATA: location_name
 User: "Delete a site"
 Assistant: "Which site do you want to delete? Available sites: {sites_formatted}"
 User: "Bangalore Hub"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available sites list when asking which site to delete
@@ -277,7 +277,7 @@ Assistant: "Which site would you like assign? Available sites: \n{sites_formatte
 User: "Delhi Office"
 Assistant: "Which users would you like select? Here are the Available users: \n {users_formatted}"
 User: "John"//can be single user or multiple
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available sites list when asking which site
@@ -303,7 +303,7 @@ Assistant: "Which site would you like to unassign? Available sites:\n {sites_for
 User: "Delhi Office"
 Assistant: "Which users would you like select? Here are the Available users: \n  {users_formatted}"
 User: "John"// can be single user or multiple
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available sites list when asking which site
@@ -347,7 +347,7 @@ permission_set
    - User replies with permission set (e.g., "Field User")
 
 5. Once all four fields are collected:
-   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================DECISION LOGIC====================
 If first_name is missing → Ask for first name.
@@ -376,7 +376,7 @@ REQUIRED DATA: full_name
 User: "Delete a user"
 Assistant: "Which user would you like to delete? Mention single name\n Available users: \n{users_formatted}"
 User: "John Doe"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users list when asking which user to delete only once // follow the conversation history below to avoid repetition
@@ -393,11 +393,11 @@ REQUIRED DATA: no data needed
 
 ====================CONVERSATION FLOW====================
 User: "Show me all users"
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed
-• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation
 """,
 
         'VIEW_PERMISSION_SETS': BASE_RULES + """====================VIEW PERMISSION SETS OPERATION====================
@@ -405,11 +405,11 @@ REQUIRED DATA: no data needed
 
 ====================CONVERSATION FLOW====================
 User: "Show me all permission sets"
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed
-• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation
 
 
 """,
@@ -423,7 +423,7 @@ Assistant: "Which user would you like to assign? Available users: \n{users_forma
 User: "Ashish Saw"
 Assistant: "Which permission set would you like to assign? Mention the names \n Available sets: \n {permissions_formatted}"
 User: "Field User"// could be single or multiple
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users list when asking which user
@@ -447,7 +447,7 @@ Assistant: "Which user would you like to unassign? Available users: \n{users_for
 User: "John Doe"
 Assistant: "Which permission set would you like to assign? Mention the names \n Available sets: \n {permissions_formatted}"
 User: "Field User and Admin"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users list when asking which user
@@ -467,11 +467,11 @@ REQUIRED DATA: no data needed
 
 ====================CONVERSATION FLOW====================
 User: "Show me all templates"
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed
-• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation
 
 """,
 
@@ -482,7 +482,7 @@ REQUIRED DATA: template_id
 User: "Delete template"
 Assistant: "Which template would you like to delete? Available templates: \n{templates_formatted}"
 User: "Field User"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available templates when asking which template
@@ -502,7 +502,7 @@ Assistant: "Which user would to assign? Mention single user\n Available users: {
 User: "John Doe"
 Assistant: "Which template would you like to assign? Mention the full name \n Available templates:\n {templates_formatted}"
 User: "Checklist 1"// can be single or multiple checklists
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users when asking which user
@@ -525,7 +525,7 @@ Assistant: "Which user would you like to unassign? Mention single user\n Availab
 User: "John Doe"
 Assistant: "Which template would you like to assign? Mention the full name \n Available templates:\n {templates_formatted}"
 User: "Checklist 1"// can be single or multiple checklists
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users when asking which user
@@ -559,7 +559,7 @@ Goal: Help the user create a new template by first selecting an industry, then s
    - Ask user to pick one template/checklist name.
 
 3. Once both industry and template are collected:
-   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+   - Respond with: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================DECISION LOGIC====================
 - If industry is missing → Ask for industry.
@@ -585,7 +585,7 @@ REQUIRED DATA: none
 
 ====================CONVERSATION FLOW====================
 User: "Auto assign new locations to all users" or "Switch off/autounassign new locations to all users" or "Auto assign new templates to all users" or "Switch off/autounassign new templates to all users"
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed
@@ -598,11 +598,11 @@ REQUIRED DATA: no data needed
 
 ====================CONVERSATION FLOW====================
 User: "Show me all the groups"
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed
-• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation
 
 """,
 
@@ -613,7 +613,7 @@ REQUIRED DATA: group_name
 User: "Create a group"
 Assistant: "What should be the name of this group?"
 User: "Mumbai Region"
-Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Ask for the group name if not provided
@@ -631,7 +631,7 @@ REQUIRED DATA: group_name
 User: "Delete a group"
 Assistant: "Which group would you like to delete? Mention single name\n Available users: \n{groups_formatted}"
 User: "Delhi Region"
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available groups when asking which group to delete only once // follow the conversation history below to avoid repetition
@@ -652,7 +652,7 @@ Assistant: Which group would you like to assign user to? Here is the list of gro
 User: Delhi Region
 Assistant: Now which user would you like to assign this group? Here is the list of users, Make your selection. \n {users_formatted}
 User: John Doe
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users when asking which user
@@ -676,7 +676,7 @@ Assistant: Which group would you like to unassign user to? Here is the list of g
 User: Delhi Region
 Assistant: Now which user would you like to unassign this group? Here is the list of users, Make your selection. \n {users_formatted}
 User: John Doe
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users when asking which user
@@ -698,11 +698,11 @@ REQUIRED DATA: group_name
 User: "Show me all the users added to a group"
 Assistant: "Which group user would you like to see? Here is the list of all the groups \n {groups_formatted}"
 User: Group 1
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed only group_name
-• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation
 
 Available groups: {groups_formatted} 
 """,
@@ -714,11 +714,11 @@ REQUIRED DATA: group_name
 User: "Show me all the users not added to a group"
 Assistant: "Which group user would you like to see? Here is the list of all the groups \n {groups_formatted}"
 User: Group 1
-Assistant: "Great! Type 'Proceed' to execute this operation."
+Assistant: "Great! Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • No additional data needed only group_name
-• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.
+• Immediately ask for 'Proceed' confirmation that is, Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation
 
 Available groups: {groups_formatted}
 """
@@ -730,7 +730,7 @@ Available groups: {groups_formatted}
 User: I would like to see detail of a user 
 Assistant: Which user would you like to see the detail of? Here is the list of users, Select one. \n {users_formatted}
 User: John Doe
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available users when asking which user
@@ -749,7 +749,7 @@ Available Users: {users_formatted}
 User: I would like to see detail of a site 
 Assistant: Which site would you like to see the detail of? Here is the list of site, Select one. \n {sites_formatted}
 User: Delhi Region
-Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation."
+Assistant: "Great! I have all the information needed. Type 'Proceed' to execute this operation.\n Type 'cancel' to stop the operation or start new Operation"
 
 ====================INSTRUCTIONS====================
 • Show available sites when asking which site
