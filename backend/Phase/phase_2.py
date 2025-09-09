@@ -8,7 +8,7 @@ from Phase.execute_operation import execute_site_operation
 
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-
+from services.Authentication_Service import AuthenticationManager
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +24,7 @@ class ChatResponse(BaseModel):
     session_intent: Optional[str] = None
 
 from Prompt.json_conversion import get_json_response_prompt
-async def execute_phase_2(session_id: str,intent:str,email:str, client=get_gemini_client(temperature=0.05)) -> ChatResponse:
+async def execute_phase_2(session_id: str,intent:str,email:str,auth_manager:AuthenticationManager, client=get_gemini_client(temperature=0.05)) -> ChatResponse:
     """Phase 2: Generate JSON and execute operation"""
     
     try:
@@ -64,7 +64,7 @@ async def execute_phase_2(session_id: str,intent:str,email:str, client=get_gemin
         print("operation data : ", operation_data)
         
         # Execute the operation
-        execution_result = await execute_site_operation(operation_data,session_id)
+        execution_result = await execute_site_operation(operation_data,session_id,auth_manager=auth_manager)
         
         # Clear conversation after execution
         clear_conversation_from_db(session_id)

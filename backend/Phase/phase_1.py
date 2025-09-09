@@ -2,7 +2,7 @@ from db.db_services import get_conversation_from_db,save_conversation_to_db,safe
 
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-
+from services.Authentication_Service import AuthenticationManager
 
 class ChatResponse(BaseModel):
     message: str
@@ -16,7 +16,7 @@ class ChatResponse(BaseModel):
 from Prompt.data_collection import get_data_collection_prompt
 
 # Updated execute_phase_1 function
-async def execute_phase_1(session_id: str, user_message: str, client,intent:str,email:str,onboarding:bool) -> ChatResponse:
+async def execute_phase_1(session_id: str, user_message: str, client,intent:str,email:str,auth:AuthenticationManager,onboarding:bool) -> ChatResponse:
     """Phase 1: Normal chat - Intent detection and data collection"""
     # Get conversation history from MongoDB
     db_messages = get_conversation_from_db(session_id)
@@ -33,7 +33,7 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str,
     # all_user_list = ollama_site_manager.get_all_users()
     # permission_set_list = ollama_permission_manager.get_all_permission_sets()
     print("getting prompt")
-    new_prompt=get_data_collection_prompt(intent)
+    new_prompt=get_data_collection_prompt(intent,auth=auth)
     BASE_PROMPT="""  """
     # Format the prompt with sites list
     # formatted_prompt = PHASE_1_PROMPT.format(all_sites_list=sites_list,all_users_list=all_user_list,all_permission_sets_list=permission_set_list)
@@ -54,7 +54,7 @@ Goal: Guide users through PulsePro's onboarding process by helping them choose a
 
 ====================AVAILABLE OPERATIONS====================
 site_creation
-user_account_setup
+new_user_setup
 checklist_creation
 
 ====================CONVERSATION FLOW====================
@@ -65,7 +65,7 @@ checklist_creation
 
 2. If user mentions specific keywords:
    - Site-related ("setup", "configure", "domain") → Guide to Site Creation
-   - User-related ("account", "profile", "team", "login") → Guide to User Account Setup
+   - User-related ("account", "profile", "team", "login") → Guide to New User Setup
    - Workflow-related ("template", "checklist", "tasks", "process") → Guide to Checklist Creation
 
 3. Once user selects an operation:
@@ -92,11 +92,12 @@ Never abruptly shut down conversations - redirect helpfully.
 
 **For new users:**
 "Welcome to PulsePro! I'm here to help you get set up. Most users start with:
-• **Site Creation** - Set up and configure your PulsePro site
-• **User Account Setup** - Create profiles and manage permissions  
+• **Site Creation** - Set up and configure your site
+• **New User Setup** - Create profiles and manage permissions  
 • **Checklist Creation** - Build industry standard checklists
 
 What sounds most relevant to where you are, or would you like me to recommend a starting point?"
+=========================================================
 
 **For related but outside-scope questions:**
 "That's a great question! While I specialize in getting you set up initially, I can help you with [relevant onboarding step] right now. Would you like to start there?"
@@ -105,7 +106,7 @@ What sounds most relevant to where you are, or would you like me to recommend a 
 "I specialize in PulsePro onboarding and can help you with site creation, user account setup, or checklist creation. Which would be most helpful?"
 
 ====================AVAILABLE OPTIONS====================
-Operations: Site Creation, User Account Setup, Checklist Creation
+Operations: Site Creation, User Setup, Checklist Creation
 """
 
     if onboarding==True:

@@ -20,7 +20,7 @@ from db.db_services import clear_conversation_from_db
 
 ollama_site_manager = None
 
-def initialize_site_manager():
+def initialize_site_manager(auth_manager):
     """Initialize the Ollama site manager"""
     global ollama_site_manager
     
@@ -29,7 +29,6 @@ def initialize_site_manager():
         # Replace this with your actual SiteManager initialization
         from services.Site_Service import SiteManager  # Replace with actual import
         
-        auth_manager = AuthenticationManager()
         ollama_site_manager = SiteManager(auth_manager)
         # Test the connection
 
@@ -43,7 +42,7 @@ def initialize_site_manager():
         return False
 
 
-def initialize_permission_manager():
+def initialize_permission_manager(auth_manager):
     """Initialize the Ollama permission manager"""
     global ollama_permission_manager
     
@@ -52,7 +51,6 @@ def initialize_permission_manager():
         # Replace this with your actual SiteManager initialization
         from services.Permission_Service import PermissionManager  # Replace with actual import
         
-        auth_manager = AuthenticationManager()
         ollama_permission_manager = PermissionManager(auth_manager)
         # Test the connection
 
@@ -65,7 +63,7 @@ def initialize_permission_manager():
         ollama_permission_manager = None
         return False
     
-def initialize_user_manager():
+def initialize_user_manager(auth_manager):
     """Initialize the Ollama user manager"""
     global ollama_user_manager
     
@@ -74,7 +72,6 @@ def initialize_user_manager():
         # Replace this with your actual SiteManager initialization
         from services.User_Service import UserManager  # Replace with actual import
         
-        auth_manager = AuthenticationManager()
         ollama_user_manager = UserManager(auth_manager)
         # Test the connection
 
@@ -87,7 +84,7 @@ def initialize_user_manager():
         ollama_user_manager = None
         return False
 
-def initialize_template_manager():
+def initialize_template_manager(auth_manager):
     """Initialize the Ollama template manager"""
     global ollama_template_manager
 
@@ -96,7 +93,6 @@ def initialize_template_manager():
         # Replace this with your actual SiteManager initialization
         from services.Template_Service import TemplateManager  # Replace with actual import
 
-        auth_manager = AuthenticationManager()
         ollama_template_manager = TemplateManager(auth_manager)
         # Test the connection
 
@@ -115,14 +111,14 @@ def initialize_template_manager():
 
 
 
-async def execute_site_operation(operation_data: dict,session_id:str) -> dict:
+async def execute_site_operation(operation_data: dict,session_id:str,auth_manager:AuthenticationManager) -> dict:
     """Execute the site operation based on JSON data"""
     
     try:
-        initialize_site_manager()
-        initialize_user_manager()
-        initialize_permission_manager()
-        initialize_template_manager()
+        initialize_site_manager(auth_manager)
+        initialize_user_manager(auth_manager)
+        initialize_permission_manager(auth_manager)
+        initialize_template_manager(auth_manager)
         print("in execute")
         operation_type = operation_data.get("operation_type")
         data = operation_data.get("data", {})

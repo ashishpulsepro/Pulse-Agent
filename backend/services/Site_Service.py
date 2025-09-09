@@ -82,6 +82,7 @@ class SiteManager:
     def _get_headers(self) -> Dict[str, str]:
         """Get headers with authentication"""
         access_token = self.auth_manager.get_access_token()
+        print("get_header")
         return {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {access_token}',
@@ -168,6 +169,7 @@ class SiteManager:
         """Get all sites"""
         url = f"{self.base_url}/customer/locations/"
         headers = self._get_headers()
+        print("get_all_site")
         
         try:
             # Try POST with empty JSON first

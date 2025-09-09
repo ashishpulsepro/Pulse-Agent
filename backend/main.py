@@ -19,7 +19,7 @@ from LLM.initialize_llm import get_gemini_client
 from services.User_Service import UserManager
 
 
-from db.db_services import save_conversation_to_db,get_last_conversations_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent,get_last_session,get_complete_conversation_from_db
+from db.db_services import save_conversation_to_db,get_last_conversations_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent,get_last_session,get_complete_conversation_from_db,can_proceed
 
 import logging
 import json
@@ -115,7 +115,7 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
     valid_intents=["CREATE_SITE","CREATE_USER","CREATE_TEMPLATE"]
 
     print("inside chat onboarding")
-    session_id = chat_request.session_id or str(uuid.uuid4())
+    session_id = chat_request.session_id or f"Session_{str(uuid.uuid4())}"
     intent = get_session_intent(session_id) or "UNKNOWN_1"
     if intent not in valid_intents:
         intent="UNKNOWN_1"
@@ -160,13 +160,13 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
             else:
                 intent='UNKNOWN_1'    
             print(f"Intent after phase 0: {intent}")
-
+        print("can proceed in main : ", can_proceed(session_id=session_id))
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
-        if user_message.lower().strip() in execution_triggers:
-            return await execute_phase_2(session_id, intent,email=email)
+        if user_message.lower().strip() in execution_triggers and can_proceed(session_id=session_id):
+            return await execute_phase_2(session_id, intent,email=email,auth_manager=auth)
         
         print("Proceeding to Phase 1 chat...")
-        return await execute_phase_1(session_id, user_message, client,intent,email=email,onboarding=True)
+        return await execute_phase_1(session_id, user_message, client,intent,email=email,onboarding=True,auth=auth)
                 
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -244,11 +244,11 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
         if user_message.lower().strip() in execution_triggers:
-            return await execute_phase_2(session_id=session_id,intent=intent, email=current_user['email'])
+            return await execute_phase_2(session_id=session_id,intent=intent, email=current_user['email'],auth_manager=auth)
         
         # Phase 1: Continue conversation
         print("Proceeding to Phase 1 chat...")
-        return await execute_phase_1(session_id, user_message, client,intent,email=email,onboarding=False)
+        return await execute_phase_1(session_id, user_message, client,intent,email=email,onboarding=False,auth=auth)
         
     except Exception as e:
         logger.error(f"Chat error: {e}")

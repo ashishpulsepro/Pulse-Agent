@@ -57,7 +57,35 @@ def get_conversation_from_db(session_id: str) -> list:
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
-    
+
+
+def can_proceed(session_id: str) -> bool:
+    """Get the status from the last message of Assistant"""
+    try:
+        message_doc = conversations_collection.find_one(
+            {"session_id": session_id, "active": True, "role": "assistant"},  # ✅ lowercase role
+            sort=[("timestamp", -1), ("_id", -1)]
+        )
+
+        if not message_doc:
+            print("can_proceed: No assistant message found")
+            return False
+
+        print("message:", message_doc["message"])
+
+        if "type 'proceed' to execute" in message_doc["message"].lower():
+            print("can_proceed: True")
+            return True
+        else:
+            print("can_proceed: False")
+            return False
+
+    except Exception as e:
+        logger.error(f"Failed to get from MongoDB: {e}")
+        return False
+      
+
+
 
 def get_complete_conversation_from_db(session_id: str) -> list:
     """Get all conversation history from MongoDB"""

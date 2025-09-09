@@ -43,17 +43,14 @@ class AuthenticationManager:
         self.tokens: Optional[AuthTokens] = None
         
         # Initialize tokens with refresh token from environment if available
-        refresh_token = os.getenv('refresh')
-        if refresh_token:
-            self.tokens = AuthTokens(access_token="", refresh_token=refresh_token)
-    
+       
     def set_refresh_token(self, refresh_token: str) -> None:
         """Set the refresh token for authentication"""
         self.tokens = AuthTokens(access_token="", refresh_token=refresh_token)
     
     def refresh_access_token(self) -> str:
         """Refresh the access token using refresh token"""
-       
+        print("in refresh_access_token")
         url = f"{self.base_url}/api/refresh/"
         headers = {
             'Accept': 'application/json, text/plain, */*',
@@ -65,7 +62,7 @@ class AuthenticationManager:
         refresh = self.tokens.refresh_token 
         if not refresh:
             raise PulseProAPIException("No refresh token available")
-        print("refresh token: ", refresh)
+        print("refresh token in refresh_access_token: ", refresh)
         payload = {"refresh": refresh}
         print("got it")
         

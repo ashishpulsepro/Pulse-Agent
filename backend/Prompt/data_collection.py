@@ -1,6 +1,6 @@
 from services.Authentication_Service import AuthenticationManager
 
-def initialize_ollama_site_manager():
+def initialize_ollama_site_manager(auth):
     """Initialize the Ollama site manager"""
     global ollama_site_manager
     
@@ -9,8 +9,7 @@ def initialize_ollama_site_manager():
         # Replace this with your actual SiteManager initialization
         from services.Site_Service import SiteManager  # Replace with actual import
         
-        auth_manager = AuthenticationManager()
-        ollama_site_manager = SiteManager(auth_manager)
+        ollama_site_manager = SiteManager(auth)
         # Test the connection
 
         
@@ -23,7 +22,7 @@ def initialize_ollama_site_manager():
         return False
 
 
-def initialize_ollama_permission_manager():
+def initialize_ollama_permission_manager(auth):
     """Initialize the Ollama permission manager"""
     global ollama_permission_manager
     
@@ -32,8 +31,7 @@ def initialize_ollama_permission_manager():
         # Replace this with your actual SiteManager initialization
         from services.Permission_Service import PermissionManager  # Replace with actual import
         
-        auth_manager = AuthenticationManager()
-        ollama_permission_manager = PermissionManager(auth_manager)
+        ollama_permission_manager = PermissionManager(auth)
         # Test the connection
 
         
@@ -45,7 +43,7 @@ def initialize_ollama_permission_manager():
         ollama_permission_manager = None
         return False
     
-def initialize_ollama_user_manager():
+def initialize_ollama_user_manager(auth):
     """Initialize the Ollama user manager"""
     global ollama_user_manager
     
@@ -54,8 +52,7 @@ def initialize_ollama_user_manager():
         # Replace this with your actual SiteManager initialization
         from services.User_Service import UserManager  # Replace with actual import
         
-        auth_manager = AuthenticationManager()
-        ollama_user_manager = UserManager(auth_manager)
+        ollama_user_manager = UserManager(auth)
         # Test the connection
 
         
@@ -67,7 +64,7 @@ def initialize_ollama_user_manager():
         ollama_user_manager = None
         return False
 
-def initialize_ollama_template_manager():
+def initialize_ollama_template_manager(auth):
     """Initialize the Ollama template manager"""
     global ollama_template_manager
 
@@ -76,8 +73,7 @@ def initialize_ollama_template_manager():
         # Replace this with your actual SiteManager initialization
         from services.Template_Service import TemplateManager  # Replace with actual import
 
-        auth_manager = AuthenticationManager()
-        ollama_template_manager = TemplateManager(auth_manager)
+        ollama_template_manager = TemplateManager(auth)
         # Test the connection
 
         print("Ollama Template Manager initialized successfully")
@@ -89,9 +85,9 @@ def initialize_ollama_template_manager():
         return False
 
 
-def get_sites_list_formatted():
+def get_sites_list_formatted(auth):
     """Get all sites and format them as a string"""
-    initialize_ollama_site_manager()
+    initialize_ollama_site_manager(auth)
     try:
         if ollama_site_manager:
             result = ollama_site_manager.get_all_sites()
@@ -106,12 +102,13 @@ def get_sites_list_formatted():
         else:
             return "Site information unavailable."
     except Exception as e:
+        print("Failed:", e)
         return "Unable to retrieve sites."
 
 
 
 
-def get_data_collection_prompt(operation_type):
+def get_data_collection_prompt(operation_type:str , auth:AuthenticationManager):
     """
     Returns operation-specific prompt with actual data values injected.
     
@@ -121,13 +118,13 @@ def get_data_collection_prompt(operation_type):
     Returns:
         str: The specific prompt for the operation with actual data values
     """
-    initialize_ollama_site_manager()
-    initialize_ollama_permission_manager()
-    initialize_ollama_template_manager()
-    initialize_ollama_user_manager()
+    initialize_ollama_site_manager(auth)
+    initialize_ollama_permission_manager(auth)
+    initialize_ollama_template_manager(auth)
+    initialize_ollama_user_manager(auth)
 
     # Get current data from systems
-    all_sites_list = get_sites_list_formatted()
+    all_sites_list = get_sites_list_formatted(auth)
     print(f"Available sites: {all_sites_list}")
 
     all_users_list = ollama_site_manager.get_all_users()
