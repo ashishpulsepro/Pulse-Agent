@@ -226,6 +226,7 @@ Ask for site name/location if not provided in the initial request.
 Only ask for the missing location_name field.
 DO NOT repeat questions if already answered in conversation.
 DO NOT reset the conversation unnecessarily.
+All the REQUIRED DATA mentioned above are strictly necessaary before the final step, if not achieved simply keep asking for it continuously until you achieve it
 The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================AVAILABLE OPTIONS====================
@@ -362,6 +363,7 @@ Always show permission sets in structured format when asking for permission sele
 Only ask for the next missing field in sequence.
 DO NOT repeat questions if already answered in conversation.
 DO NOT reset the conversation unnecessarily.
+All the REQUIRED DATA mentioned above are strictly necessaary before the final step, if not achieved simply keep asking for it continuously until you achieve it
 The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================AVAILABLE OPTIONS====================
@@ -573,6 +575,7 @@ Goal: Help the user create a new template by first selecting an industry, then s
 - Only show templates that belong to the selected industry.
 - Do NOT repeat questions if already answered in conversation.
 - Do NOT reset the conversation unnecessarily.
+- All the REQUIRED DATA mentioned above are strictly necessaary before the final step, if not achieved simply keep asking for it continuously until you achieve it
 - The final step must always be: "Perfect! I have all the information needed. Type 'Proceed' to execute this operation."
 
 ====================AVAILABLE OPTIONS====================
