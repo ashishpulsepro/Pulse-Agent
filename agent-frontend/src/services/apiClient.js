@@ -33,7 +33,7 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    const refreshToken = getRefreshToken() || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODE3MTkyOCwianRpIjoiZjczZjhmMmUxNDMwNGRiZDkyMTNiOGEwNjMwOGJiMDciLCJ1c2VyX2lkIjo3NTZ9.UtjCTpxf9O-7RsibYam5-Bg6VL0Unr1mNOhRgiGk8Rk';
+    const refreshToken = getRefreshToken() || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODEwMTk1MCwianRpIjoiMTdlNzNhOGMyYTc2NDI2NGI3NDQzMDZhY2U2YjI2OTkiLCJ1c2VyX2lkIjo3NTd9.bgurTOG08Yz4HPqL77zYG9lBDscRfmkxhjZSDXWjvis';
 
     // If caller passed a plain object body, we'll JSON stringify here and append refresh token if not already present.
     let body = options.body;
@@ -70,7 +70,7 @@ class ApiClient {
     const email_id =
       localStorage.getItem("PULSE_USER_EMAIL") ||
       getUserEmail() ||
-      "ashish@pulsepro.ai";
+      "areeb@pulsepro.ai";
     return this.request("/chat/onboarding", {
       method: "POST",
       body: {
