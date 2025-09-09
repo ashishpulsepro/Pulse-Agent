@@ -19,7 +19,7 @@ from LLM.initialize_llm import get_gemini_client
 from services.User_Service import UserManager
 
 
-from db.db_services import save_conversation_to_db,get_conversation_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent,get_last_session,get_complete_conversation_from_db
+from db.db_services import save_conversation_to_db,get_last_conversations_from_db,get_all_session_ids,clear_conversation_from_db,get_session_intent,store_session_intent,get_last_session,get_complete_conversation_from_db
 
 import logging
 import json
@@ -268,7 +268,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
 async def get_chat_history(session_id: str):
     """Get pending conversation history for a last session from MongoDB"""
     try:
-        messages = get_conversation_from_db(session_id)
+        messages = get_last_conversations_from_db(session_id)
         return {
             "session_id": session_id,
             "conversation": [

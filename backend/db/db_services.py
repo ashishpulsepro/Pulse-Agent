@@ -70,6 +70,24 @@ def get_complete_conversation_from_db(session_id: str) -> list:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
     
+def get_last_conversations_from_db(session_id: str, limit: int = 15) -> list:
+    """Get last N conversation history from MongoDB"""
+    try:
+        messages = (
+            conversations_collection.find(
+                {"session_id": session_id}  # optional filter
+            )
+            .sort([("timestamp", -1), ("_id", -1)])  # newest first
+            .limit(limit)
+        )
+        # reverse so they are in chronological order (oldest → newest)
+        return list(messages)[::-1]
+    except Exception as e:
+        logger.error(f"Failed to get from MongoDB: {e}")
+        return []
+
+
+    
 def get_all_session_ids(email:str) -> list:
     """Fetch all unique session IDs from MongoDB"""
     try:
