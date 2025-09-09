@@ -137,7 +137,7 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
         
         save_conversation_to_db(session_id, "user", user_message,email=email, intent=intent)
 
-        cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end"]
+        cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end","cancle","cancl"]
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
             clear_conversation_from_db(session_id)
             return ChatResponse(
@@ -222,7 +222,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         save_conversation_to_db(session_id, "user", user_message,email=email, intent=intent)
 
         # Check if user wants to execute (Phase 2)
-        cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end"]
+        cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end","cancle","cancl"]
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
             clear_conversation_from_db(session_id)
             return ChatResponse(
@@ -243,7 +243,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
 
         
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
-        if user_message.lower().strip() in execution_triggers:
+        if user_message.lower().strip() in execution_triggers and  can_proceed(session_id=session_id):
             return await execute_phase_2(session_id=session_id,intent=intent, email=current_user['email'],auth_manager=auth)
         
         # Phase 1: Continue conversation

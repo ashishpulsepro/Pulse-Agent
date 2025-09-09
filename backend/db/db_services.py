@@ -103,7 +103,7 @@ def get_last_conversations_from_db(session_id: str, limit: int = 15) -> list:
     try:
         messages = (
             conversations_collection.find(
-                {"session_id": session_id}  # optional filter
+                {"session_id": session_id, "active":True}  # optional filter
             )
             .sort([("timestamp", -1), ("_id", -1)])  # newest first
             .limit(limit)
