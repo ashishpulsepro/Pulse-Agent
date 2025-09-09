@@ -218,6 +218,7 @@ location_name
 ====================DECISION LOGIC====================
 If location_name is missing → Ask for site name.
 If location_name is collected → Ask user to type 'Proceed'.
+If user wants to proceed/start execution before the required data achieved, simply keep asking for it continuously until you achieve it
 DO NOT ask for the same thing twice. Check conversation history before asking again.
 
 ====================RULES====================
@@ -352,6 +353,7 @@ If first_name is collected but last_name is missing → Ask for last name.
 If last_name is collected but email is missing → Ask for email.
 If email is collected but permission_set is missing → Show available permission sets and ask for selection.
 If all four fields are collected → Ask user to type 'Proceed'.
+If user wants to proceed/start execution before the required data achieved, simply keep asking for it continuously until you achieve it
 DO NOT ask for the same thing twice. Check conversation history before asking again.
 
 ====================RULES====================
@@ -546,7 +548,7 @@ Goal: Help the user create a new template by first selecting an industry, then s
 - template_name
 
 ====================CONVERSATION FLOW====================
-1. If the user says "create a template":
+1. If the user says "create a template" or says show all the options available for him:
    - Ask ONLY for the industry.
    - Show the list of industries: {industries_formatted}
    - User replies with industry (e.g., "Retail")
@@ -562,6 +564,8 @@ Goal: Help the user create a new template by first selecting an industry, then s
 - If industry is missing → Ask for industry.
 - If industry is collected but template is missing → Show only templates for that industry and ask for template.
 - If both are collected → Ask user to type 'Proceed'.
+- if user insist to show all/more the checklists not specific to any industry, then just list all the checklists available in formatted way
+- if user wants to proceed/start execution before the required data achieved, simply keep asking for it 
 - DO NOT ask for the same thing twice. Check conversation history before asking again.
 
 ====================RULES====================
@@ -816,7 +820,10 @@ If you're new to PulsePro, I can also guide you through the onboarding process:
 3. Create a template
 
 I'll guide you through each step and ask for any information I need. Just let me know how I can help you today!
-"""
+""",
+
+        'UNKNOWN_1':""" """
+
     }
     print("Prepared all prompts with data injection")
     # Return the specific prompt with all data values injected

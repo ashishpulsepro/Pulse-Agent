@@ -35,19 +35,25 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
     # Improved intent detection prompt
     intent_prompt = f"""You are a PulsePro intent classifier.
 
-ANALYZE the user message and conversation history to determine the user's intent. 
+====================ANALYSIS METHODOLOGY====================
+
+Read the ENTIRE conversation from start to finish
+Identify the user's FINAL/CURRENT intent (ignore earlier topics they moved away from)
+Focus on the user's LAST clear request or direction
+Look for confirmation words like "yes", "continue", "proceed", "build it"
+
+====================USER MESSAGE ANALYSIS====================
 USER MESSAGE: "{user_message}"
-
-CONVERSATION HISTORY:
+====================CONVERSATION CONTEXT====================
 {conversation_history}
-
-ONLY VALID INTENTS:
+====================VALID INTENTS ONLY====================
 {valid_intents}
 
 
-INTENTS:
+====================INTENT DEFINITIONS====================
+
 - AUTOMATE_CUSTOMER_ACCESS_SETTING: "Auto assign new locations to all users" or "Switch off/autounassign/remove new locations to all users" or "Auto assign new templates to all users" or "Switch off/autounassign/remove new templates to all users"
-- CREATE_TEMPLATE: create/add/make/new template/checklist/form
+- CREATE_TEMPLATE: create/add/make/new template/checklist/form or (What are the checklists options for me?) or How can I build checklist
 - SHOW_ALL_TEMPLATES: show/list/see/display all templates/checklist/forms/
 - ASSIGN_TEMPLATE_TO_USER: assign/give/allot template/checklist/form to user/employee/staff/person/man or assign/give/allot user/employee/staff/person/man  to template/checklist/form
 - UNASSIGN_TEMPLATE_FROM_USER: remove/take/unassign/revoke template/checklist/form from user/employee/staff/person/man or remove/take/unassign/revoke user/employee/staff/person/man from template/checklist/form
@@ -74,15 +80,55 @@ INTENTS:
 - DETAIL_SPECIFIC_SITE: show/list/display  detail/more about/of a specific site/location
 - UNKNOWN: hello/hi/chat/help/other topics/ about the platform
 
-RULES:
-0. If message contains "auto" or "automaticcaly" + "assign" or "unassign" + "location/site" or "checklist/template" ->return :  AUTOMATE_CUSTOMER_ACCESS_SETTING
-1. If message contains "permission/role/access" + "assign/give" → ASSIGN_PERMISSION_SET_TO_USER
-2. If message contains "permission/role/access" + "remove/revoke" → UNASSIGN_PERMISSION_SET_FROM_USER
-3. If message contains "user" + "to" + "site/office" → ASSIGN_USERS_TO_SITE
-4. If message contains "show","display","list","see"+ "template","forms" → SHOW_ALL_TEMPLATES
-5. If message contains "remove" + "template" → DELETE_TEMPLATE
-6. Look for key action words: create, delete, view, assign, remove
-7. If unsure, return UNKNOWN
+====================DECISION LOGIC====================
+Priority 1 - Final Intent Recognition:
+
+If user says "yes", "continue", "build it", "proceed" after discussing a specific operation → Return that operation's intent
+If user confirms they want to complete a process → Return the relevant CREATE_* intent
+
+Priority 2 - Conversation Flow Analysis:
+
+Trace the conversation to find what the user ultimately wants to accomplish
+Ignore early topics if user moved to a different goal
+Focus on the most recent clear direction
+
+Priority 3 - Keyword Matching:
+
+Auto + assign/unassign + location/template → AUTOMATE_CUSTOMER_ACCESS_SETTING
+Permission + assign → ASSIGN_PERMISSION_SET_TO_USER
+Permission + remove → UNASSIGN_PERMISSION_SET_FROM_USER
+Template + create/build/make → CREATE_TEMPLATE
+Template + show/list → SHOW_ALL_TEMPLATES
+Site + create → CREATE_SITE
+User + create → CREATE_USER
+
+====================GENERIC EXAMPLES====================
+Negation Patterns That Should Return UNKNOWN:
+
+"I'll create [X] later" (postponement)
+"I don't want to create [X]" (negation)
+"Continue with default [X]" (current state)
+"I'm the only [X]" (satisfaction)
+"Not now, maybe later" (postponement)
+"Skip [X] for now" (postponement)
+
+Positive Patterns That Should Return Intent:
+
+"Create [X]" (no negation words)
+"Let's build [X]" (active confirmation)
+"I want to make [X]" (clear intent)
+"Yes, proceed with [X]" (confirmation)
+
+Analysis Method:
+
+Scan for negation/postponement words FIRST
+If found near action words → Return UNKNOWN
+If not found → Apply normal keyword matching
+
+=========================================================
+
+Look for key action words: create, delete, view, assign, remove
+If unsure, return UNKNOWN
 CRITICAL: Return ONLY the intent name from the list of valid intents (e.g., "CREATE_SITE" or "UNKNOWN"). No explanations, no other text.
 """
 

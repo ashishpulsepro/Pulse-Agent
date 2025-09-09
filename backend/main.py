@@ -161,7 +161,7 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
                 intent='UNKNOWN_1'    
             print(f"Intent after phase 0: {intent}")
         print("can proceed in main : ", can_proceed(session_id=session_id))
-        execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
+        execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now","yes"]
         if user_message.lower().strip() in execution_triggers and can_proceed(session_id=session_id):
             return await execute_phase_2(session_id, intent,email=email,auth_manager=auth)
         
@@ -242,7 +242,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         print(inspect.signature(execute_phase_2))
 
         
-        execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now"]
+        execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now","yes"]
         if user_message.lower().strip() in execution_triggers and  can_proceed(session_id=session_id):
             return await execute_phase_2(session_id=session_id,intent=intent, email=current_user['email'],auth_manager=auth)
         
