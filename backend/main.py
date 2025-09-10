@@ -360,6 +360,7 @@ from services.Upload_Service import UploadFileService
 
 @app.post("/upload-form/")
 async def upload_form_endpoint(
+    refresh:Optional[str],
     file: UploadFile = File(..., description="Excel file to upload (.xlsx or .xls)"),
     form_name: str = Form(..., description="Name for the form")
 ):
@@ -370,7 +371,8 @@ async def upload_form_endpoint(
     - **form_name**: Custom name for the form
     """
     auth_manager = AuthenticationManager()
-    auth_manager.set_refresh_token(refresh_token="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODE3MTkyOCwianRpIjoiZjczZjhmMmUxNDMwNGRiZDkyMTNiOGEwNjMwOGJiMDciLCJ1c2VyX2lkIjo3NTZ9.UtjCTpxf9O-7RsibYam5-Bg6VL0Unr1mNOhRgiGk8Rk")
+    refresh_token=refresh 
+    auth_manager.set_refresh_token(refresh_token=refresh_token)
     upload_service = UploadFileService(auth_manager)
     try:
         # Use the service's complete upload process
