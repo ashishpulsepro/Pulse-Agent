@@ -112,7 +112,7 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
     auth.set_refresh_token(refresh_token=refresh)
 
     print(f"Authenticated user: {current_user['email']}")
-    valid_intents=["CREATE_SITE","CREATE_USER","CREATE_TEMPLATE"]
+    valid_intents=["CREATE_SITE","CREATE_USER","CREATE_TEMPLATE","UPLOAD_CHECKLIST"]
 
     print("inside chat onboarding")
     session_id = chat_request.session_id or f"Session_{str(uuid.uuid4())}"
@@ -139,13 +139,15 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
 
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end","cancle","cancl"]
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
-            clear_conversation_from_db(session_id)
-            return ChatResponse(
-                message="""Operation cancelled. No action taken. Now you can start with new operation.\n 
+            msg="""Operation cancelled. No action taken. Now you can start with new operation.\n 
                 • **Site Creation** - Set up and configure your PulsePro site
                 • **User Account Setup** - Create profiles and manage permissions  
                 • **Checklist Creation** - Build industry standard checklists
                  """,
+            save_conversation_to_db(session_id, "assistant", msg,email=email, intent=intent)
+            clear_conversation_from_db(session_id)
+            return ChatResponse(
+                message=msg,
                 status="cancelled",
                 session_id=session_id,
                 context={"phase": "cancelled"},
@@ -160,6 +162,8 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
             else:
                 intent='UNKNOWN_1'    
             print(f"Intent after phase 0: {intent}")
+
+
         print("can proceed in main : ", can_proceed(session_id=session_id))
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now","yes"]
         if user_message.lower().strip() in execution_triggers and can_proceed(session_id=session_id):
@@ -224,9 +228,11 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         # Check if user wants to execute (Phase 2)
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end","cancle","cancl"]
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
+            msg="Operation cancelled. No action taken. Now you can start with new operation"
+            save_conversation_to_db(session_id, "assistant", msg,email=email, intent=intent)
             clear_conversation_from_db(session_id)
             return ChatResponse(
-                message="Operation cancelled. No action taken. Now you can start with new operation",
+                message=msg,
                 status="cancelled",
                 session_id=session_id,
                 context={"phase": "cancelled"},
@@ -236,10 +242,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         if intent == 'UNKNOWN':
             intent = await execute_phase_0(session_id, user_message)
             store_session_intent(session_id, intent)
-            print(f"Intent after phase 0: {intent}")
-        
-        import inspect
-        print(inspect.signature(execute_phase_2))
+            print(f"Intent after phase 0: {intent}")            
 
         
         execution_triggers = ["proceed", "execute", "go", "do it", "yes proceed", "execute now","yes"]

@@ -765,6 +765,19 @@ Do not repeatedly ask the same question // follow the conversation history below
 Available Sites: {sites_formatted}
 """,
 
+'UPLOAD_CHECKLIST':BASE_RULES + f"""
+=======================================UPLOAD_CHECKLIST==========================================
+Goal: User is able to upload the checklist 
+
+==================================CONVERSATION FLOW====================================
+User:I want to create a custom checklist or Upload a checklist
+Assistant: Upload your Checklist Below.
+
+=====================================Decision Rules================================
+No additional Detail is required just respond with upload the checklist below
+
+""",
+
 
         'UNKNOWN': f"""You are PulsePro AI Assistant.
 Hello! I'm your PulsePro AI Assistant, designed to help you manage your PulsePro system efficiently.

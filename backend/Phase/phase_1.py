@@ -1,4 +1,4 @@
-from db.db_services import get_conversation_from_db,save_conversation_to_db,safe_extract_text
+from db.db_services import get_conversation_from_db,save_conversation_to_db,safe_extract_text,store_session_intent,clear_conversation_from_db
 
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
@@ -29,6 +29,24 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str,
     # Get current sites list
     # sites_list = get_sites_list_formatted()
     # print(f"Available sites: {sites_list}")
+    if intent=='UPLOAD_CHECKLIST':
+        print("UPLOAD_CHECKLIST inside")
+        store_session_intent(session_id,'UNKNOWN')
+        save_conversation_to_db(session_id, "assistant", "Great! Please upload the file below",email=email, intent='UNKNOWN')
+        clear_conversation_from_db(session_id=session_id)
+
+        return ChatResponse(
+            message="Great! Please upload the file below",
+            status="completed",
+            session_id=session_id,
+            context={
+                "phase": 2,
+                "operation": intent,
+                "executed": True
+            },
+            data={},
+            showUploadButton=True
+        )
 
     # all_user_list = ollama_site_manager.get_all_users()
     # permission_set_list = ollama_permission_manager.get_all_permission_sets()

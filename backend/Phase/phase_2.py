@@ -22,6 +22,7 @@ class ChatResponse(BaseModel):
     context: Optional[Dict[str, Any]] = None
     data: Optional[Dict[str, Any]] = None
     session_intent: Optional[str] = None
+    showUploadButton : Optional[bool]= False
 
 from Prompt.json_conversion import get_json_response_prompt
 async def execute_phase_2(session_id: str,intent:str,email:str,auth_manager:AuthenticationManager, client=get_gemini_client(temperature=0.05)) -> ChatResponse:
@@ -65,6 +66,9 @@ async def execute_phase_2(session_id: str,intent:str,email:str,auth_manager:Auth
         
         # Execute the operation
         execution_result = await execute_site_operation(operation_data,session_id,auth_manager=auth_manager)
+        showUploadButton=False
+        if intent=='UPLOAD_CHECKLIST':
+            showUploadButton=True
         
         # Clear conversation after execution
         clear_conversation_from_db(session_id)
@@ -79,7 +83,8 @@ async def execute_phase_2(session_id: str,intent:str,email:str,auth_manager:Auth
                 "operation": operation_data["operation_type"],
                 "executed": True
             },
-            data=execution_result["data"]
+            data=execution_result["data"],
+            showUploadButton=showUploadButton
         )
         
     except json.JSONDecodeError as e:
