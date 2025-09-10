@@ -138,14 +138,16 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
         save_conversation_to_db(session_id, "user", user_message,email=email, intent=intent)
 
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end","cancle","cancl"]
-        if any(trigger in user_message.lower() for trigger in cancel_triggers):
-            msg="""Operation cancelled. No action taken. Now you can start with new operation.\n 
-                • **Site Creation** - Set up and configure your PulsePro site
-                • **User Account Setup** - Create profiles and manage permissions  
-                • **Checklist Creation** - Build industry standard checklists
-                 """,
-            save_conversation_to_db(session_id, "assistant", msg,email=email, intent=intent)
+        if user_message.lower().strip()  in cancel_triggers:
+            msg=f"""Operation cancelled. No action taken. Now you can start with new operation.\n 
+               1 • **Site Creation** - Set up and configure your PulsePro site
+               2 • **User Account Setup** - Create profiles and manage permissions  
+               3 • **Checklist Creation** - Build industry standard checklists
+                 """
+            
             clear_conversation_from_db(session_id)
+            save_conversation_to_db(session_id, "assistant", msg,email=email, intent='UNKNOWN_1')
+            
             return ChatResponse(
                 message=msg,
                 status="cancelled",
@@ -229,7 +231,7 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end","cancle","cancl"]
         if any(trigger in user_message.lower() for trigger in cancel_triggers):
             msg="Operation cancelled. No action taken. Now you can start with new operation"
-            save_conversation_to_db(session_id, "assistant", msg,email=email, intent=intent)
+            save_conversation_to_db(session_id, "assistant", msg,email=email, intent='UNKNOWN')
             clear_conversation_from_db(session_id)
             return ChatResponse(
                 message=msg,

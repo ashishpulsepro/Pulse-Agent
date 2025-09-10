@@ -1,161 +1,94 @@
-// API configuration
-const API_BASE_URL = "http://localhost:8000";
+// Mirrors the existing frontend/src/services/api.js patterns
+// Default to local backend; override with VITE_API_BASE_URL when deploying the FastAPI backend
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// API service class
-class ApiService {
+// NOTE: For now, we read a refresh token from localStorage.
+// Later, replace getAuthToken() with your real auth flow (access token or cookie).
+// function getAccessToken() {
+//   const raw = localStorage.getItem("user");
+//   if (!raw) return null; // nothing stored
+//   const user = JSON.parse(raw);
+//   return user?.access_token || null;
+// }
+
+function getRefreshToken() {
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  const user = JSON.parse(raw);
+  return user?.refresh_token || null;
+}
+
+function getUserEmail() {
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  const user = JSON.parse(raw);
+  return user?.email || null;
+}
+
+class ApiClient {
   constructor() {
     this.baseURL = API_BASE_URL;
   }
 
-  // Generic request method
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const refreshToken = getRefreshToken() || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODE3MTkyOCwianRpIjoiZjczZjhmMmUxNDMwNGRiZDkyMTNiOGEwNjMwOGJiMDciLCJ1c2VyX2lkIjo3NTZ9.UtjCTpxf9O-7RsibYam5-Bg6VL0Unr1mNOhRgiGk8Rk';
+
+    // If caller passed a plain object body, we'll JSON stringify here and append refresh token if not already present.
+    let body = options.body;
+    if (body && typeof body === "object" && !(body instanceof FormData)) {
+      body = { ...body };
+      if (refreshToken && body.refresh_token === undefined) {
+        body.refresh_token = refreshToken;
+      }
+      body = JSON.stringify(body);
+    }
+
     const config = {
+      method: options.method || "GET",
+      body,
       headers: {
         "Content-Type": "application/json",
-        ...options.headers,
+        ...(refreshToken ? { Authorization: `Bearer ${refreshToken}` } : {}), // send access token as 'Authorization'
+        ...(options.headers || {}),
       },
-      ...options,
     };
 
-    try {
-      const response = await fetch(url, config);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`API Error for ${endpoint}:`, error);
-      throw error;
+    const res = await fetch(url, config);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
     }
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) return res.json();
+    return res.text();
   }
 
-  // Chat methods
+  // Onboarding chat (existing backend)
   async sendMessage(message, sessionId = null) {
-    // const access_token=localStorage.getItem("user").get("access_token")
-    const access_token='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3MTg2MTg3LCJqdGkiOiI2NDhhNGNiYTY0ODM0ZDE0YWNhOWIyMDY3NTE0OGFkZiIsInVzZXJfaWQiOjc1Nn0.Q3VvGcVrxOZ83UVQkXafGuRvV3jyNSO9Bdgruywb4z4'
-    // const email_id=await this.getUserEmail(access_token)
-    // console.log("email: "+ email_id)
-    const email_id="ashish@pulsepro.ai"
-    return this.request("/chat/onboarding", {
+    const email_id =
+      localStorage.getItem("PULSE_USER_EMAIL") ||
+      getUserEmail() ||
+      "ashish@pulsepro.ai";
+    return this.request("/chat", {
       method: "POST",
-       headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${access_token}`, // ✅ add auth header
-    },
-      body: JSON.stringify({
+      body: {
         message,
         session_id: sessionId,
-        email:email_id
-      }),
+        email: email_id,
+      },
     });
   }
 
-  async getUserProfile(accessToken) {
-  try {
-    console.log("inside");
-    const response = await fetch("/api/common/get_profile/", {
-      method: "GET",
-      headers: {
-        "Accept": "application/json, text/plain, */*",
-        "Authorization": `Bearer ${accessToken}`
-      }
+  // Placeholder for future agent chat
+  async sendAgentMessage(message, sessionId = null) {
+    return this.request("/chat", {
+      method: "POST",
+      body: { message, session_id: sessionId },
     });
-
-    console.log("status:", response.status);
-
-    // Read once
-    const text = await response.text();
-    console.log("raw response:", text);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    // Parse JSON from text
-    const profile = JSON.parse(text);
-
-    // return only selected fields
-    return {
-      email: profile.email,
-      firstName: profile.first_name,
-      lastName: profile.last_name,
-      role: profile.role
-        };
-  } catch (error) {
-    console.error("Failed to fetch profile:", error);
-    return null;
   }
 }
 
-async getUserEmail(accessToken) {
-  try {
-    console.log("inside");
-    const response = await fetch("/api/common/get_profile/", {
-      method: "GET",
-      headers: {
-        "Accept": "application/json, text/plain, */*",
-        "Authorization": `Bearer ${accessToken}`
-      }
-    });
-
-    console.log("status:", response.status);
-
-    // Read once
-    const text = await response.text();
-    console.log("raw response:", text);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    // Parse JSON from text
-    const profile = JSON.parse(text);
-
-    console.log("email:", profile.email);
-    return profile.email;
-  } catch (error) {
-    console.error("Failed to fetch profile:", error);
-    return null;
-  }
-}
-
-
-
-
-  async getChatHistory(sessionId) {
-    return this.request(`/chat/history/${sessionId}`);
-  }
-
-  async clearChatSession(sessionId) {
-    return this.request(`/chat/sessions/${sessionId}`, {
-      method: "DELETE",
-    });
-  }
-
-  
-
-  // Health check methods
-  async checkHealth() {
-    return this.request("/health");
-  }
-
-  async checkChatHealth() {
-    return this.request("/chat/health");
-  }
-
-  async testOllamaConnection() {
-    return this.request("/ollama/test");
-  }
-
-  // System status
-  async getSystemStatus() {
-    return this.request("/status");
-  }
-}
-
-// Export singleton instance
-export const apiService = new ApiService();
-export default apiService;
+export const apiClient = new ApiClient();
+export default apiClient;

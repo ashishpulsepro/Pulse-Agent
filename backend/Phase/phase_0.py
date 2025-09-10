@@ -40,7 +40,19 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
 Read the ENTIRE conversation from start to finish
 Identify the user's FINAL/CURRENT intent (ignore earlier topics they moved away from)
 Focus on the user's LAST clear request or direction
-Look for confirmation words like "yes", "continue", "proceed", "build it"
+Look for confirmation words like "ok","yes", "continue", "proceed", "build it" and then follow the convesation histry below to decide the intent
+
+===========================Examples=================================
+you have to strictly follow this rule: If the user enters a number (1,2,3…), map it to the matching option in the last Assistant message and return the intent for that option.
+
+FOR Example:
+
+Assistant:
+Operation cancelled. No action taken. Now you can start with new operation.
+1 • Site Creation - Set up and configure your PulsePro site
+2 • User Account Setup - Create profiles and manage permissions
+3 • Checklist Creation - Build industry standard checklists
+User: 3 → CREATE_TEMPLATE
 
 ====================USER MESSAGE ANALYSIS====================
 USER MESSAGE: "{user_message}"

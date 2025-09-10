@@ -11,6 +11,8 @@ class ChatResponse(BaseModel):
     context: Optional[Dict[str, Any]] = None
     data: Optional[Dict[str, Any]] = None
     session_intent: Optional[str] = None
+    showUploadButton : Optional[bool]= False
+
 
 
 from Prompt.data_collection import get_data_collection_prompt
@@ -111,12 +113,15 @@ If conversation History shows that the user switches from one operation to anoth
 
 **For new users:**
 "Welcome to PulsePro! I'm here to help you get set up. Most users start with:
-• **Site Creation** - Set up and configure your site
-• **New User Setup** - Create profiles and manage permissions  
-• **Checklist Creation** - Build industry standard checklists
+1 • **Site Creation** - Set up and configure your site
+2 • **New User Setup** - Create profiles and manage permissions  
+3 • **Checklist Creation** - Build industry standard checklists
 
 What sounds most relevant to where you are, or would you like me to recommend a starting point?"
 =========================================================
+
+**If user asks for recommendation or guidence, start with Site Creation**
+then if the user says yes , means the intent is CREATE_SITE
 
 **For related but outside-scope questions:**
 "That's a great question! While I specialize in getting you set up initially, I can help you with [relevant onboarding step] right now. Would you like to start there?"
@@ -179,5 +184,7 @@ Operations: Site Creation, User Setup, Checklist Creation
             "phase": 1,
             "conversation_length": len(get_conversation_from_db(session_id)),
             "intent": intent},
-        data={}
+        data={},
+        showUploadButton=False
+
     )

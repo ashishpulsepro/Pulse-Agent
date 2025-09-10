@@ -98,27 +98,45 @@ def get_complete_conversation_from_db(session_id: str) -> list:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
     
-def get_last_conversations_from_db(session_id: str, limit: int = 15) -> list:
-    """Get last N conversation history from MongoDB"""
-    try:
-        messages = (
-            conversations_collection.find(
-                {"session_id": session_id, "active":True}  # optional filter
-            )
-            .sort([("timestamp", -1), ("_id", -1)])  # newest first
-            .limit(2)
-        )
 
-        if messages:
-            messages=(
-            conversations_collection.find(
-                {"session_id": session_id}  # optional filter
-            )
-            .sort([("timestamp", -1), ("_id", -1)])  # newest first
-            .limit(limit)
-        )
-        # reverse so they are in chronological order (oldest → newest)
-        return list(messages)[::-1]
+    
+def get_last_conversations_from_db(session_id: str, limit: int = 15) -> list:
+    """
+    Most optimized version using aggregation pipeline
+    """
+    try:
+        # Use aggregation to check existence and get messages in one query
+        pipeline = [
+            {"$match": {"session_id": session_id}},
+            {
+                "$facet": {
+                    "has_active": [
+                        {"$match": {"active": True}},
+                        {"$limit": 1},
+                        {"$count": "count"}
+                    ],
+                    "all_messages": [
+                        {"$sort": {"timestamp": -1, "_id": -1}},
+                        {"$limit": limit}
+                    ]
+                }
+            }
+        ]
+        
+        result = list(conversations_collection.aggregate(pipeline))
+        
+        if result:
+            has_active = len(result[0]["has_active"]) > 0
+            print(f"Has active messages: {has_active}")
+            
+            if has_active:
+                messages = result[0]["all_messages"]
+                print(f"Retrieved {len(messages)} messages")
+                return messages[::-1]  # Reverse for chronological order
+        
+        print("No active messages found or no results")
+        return []
+        
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
