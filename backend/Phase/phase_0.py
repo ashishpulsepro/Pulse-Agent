@@ -29,7 +29,7 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
         "UNASSIGN_PERMISSION_SET_FROM_USER","DETAIL_SPECIFIC_USER","DETAIL_SPECIFIC_SITE",
         "SHOW_ALL_TEMPLATES", "ASSIGN_TEMPLATE_TO_USER", "UNASSIGN_TEMPLATE_FROM_USER", "CREATE_TEMPLATE",
         "CREATE_A_GROUP","DELETE_A_GROUP","ADD_USER_TO_GROUP","REMOVE_USER_FROM_GROUP","VIEW_ALL_GROUPS","SHOW_USERS_ADDED_TO_GROUP","SHOW_USERS_ADDED_NOT_TO_GROUP",
-        "DELETE_TEMPLATE","AUTOMATE_CUSTOMER_ACCESS_SETTING","UNKNOWN"
+        "DELETE_TEMPLATE","AUTOMATE_CUSTOMER_ACCESS_SETTING","UPLOAD_CHECKLIST","UNKNOWN"
     ]
     
     # Improved intent detection prompt
@@ -78,6 +78,7 @@ USER MESSAGE: "{user_message}"
 - SHOW_USERS_ADDED_NOT_TO_GROUP: show/list/display users/member not added/assigned to a group/cluster
 - DETAIL_SPECIFIC_USER: show/list/display  detail/more about/of a specific user/member
 - DETAIL_SPECIFIC_SITE: show/list/display  detail/more about/of a specific site/location
+- UPLOAD_CHECKLIST: upload/custom/my template/checklist
 - UNKNOWN: hello/hi/chat/help/other topics/ about the platform
 
 ====================DECISION LOGIC====================

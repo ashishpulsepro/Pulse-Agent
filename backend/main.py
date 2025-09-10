@@ -349,6 +349,47 @@ async def clear_chat_session(session_id: str):
             data={"session_id": session_id}
         )
 
+from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+from services.Upload_Service import UploadFileService
+
+
+@app.post("/upload-form/")
+async def upload_form_endpoint(
+    file: UploadFile = File(..., description="Excel file to upload (.xlsx or .xls)"),
+    form_name: str = Form(..., description="Name for the form")
+):
+    """
+    Upload Excel file to PulsePro API
+    
+    - **file**: Excel file from user's local machine
+    - **form_name**: Custom name for the form
+    """
+    auth_manager = AuthenticationManager()
+    auth_manager.set_refresh_token(refresh_token="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1ODE3MTkyOCwianRpIjoiZjczZjhmMmUxNDMwNGRiZDkyMTNiOGEwNjMwOGJiMDciLCJ1c2VyX2lkIjo3NTZ9.UtjCTpxf9O-7RsibYam5-Bg6VL0Unr1mNOhRgiGk8Rk")
+    upload_service = UploadFileService(auth_manager)
+    try:
+        # Use the service's complete upload process
+        result = await upload_service.process_file_upload(
+            file=file,
+            form_name=form_name
+        )
+        
+        return JSONResponse(
+            status_code=200,
+            content=result
+        )
+        
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions from the service
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error: {str(e)}"
+        )
+
+
 
 
 

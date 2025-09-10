@@ -291,7 +291,7 @@ class TemplateManager:
         for checklist in existing_checklists:
             if checklist.get('name').lower()==checklist_name.lower():
                 return{
-                    'message': f"Checklist **{checklist_name}** already exist"
+                    'message': f"Checklist **{checklist_name}** already exist \n Would you like to create checklist again or try other new operation"
                 }
 
 
@@ -302,7 +302,7 @@ class TemplateManager:
             logger.info(f"Checklist  saved successfully")
             response.json()
             return{
-                'message':f"✅ Template **{checklist_name}** created successfully!"
+                'message':f"✅ Template **{checklist_name}** created successfully!\n Would you like to create checklist again or try other new operation"
             }
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to save checklist '{checklist_id}': {e}")

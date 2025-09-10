@@ -295,7 +295,7 @@ async def execute_site_operation(operation_data: dict,session_id:str,auth_manage
                 result = ollama_user_manager.delete_user(id)
                 return {
                     "success": True,
-                    "message": f"✅ User **{full_name}** deleted successfully!",
+                    "message": f"✅ User **{full_name}** deleted successfully! \n Would you like to delete user again or try other new operation",
                     "data": {"user_id": id}
                 }
             else:

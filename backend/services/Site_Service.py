@@ -139,7 +139,7 @@ class SiteManager:
         for site in existing_sites:
             if site.get('location_name').lower() == location_name.lower():
                 return {
-                    'message':f"Site **{location_name}** already exist"
+                    'message':f"Site **{location_name}** already exist\n Would you like to create site again or try other new operation"
                 }
         
         payload = {
@@ -153,7 +153,7 @@ class SiteManager:
             data = response.json()
             logger.info(f"Site '{location_name}' created successfully with minimal data")
             return {
-                'message': f"✅ Site **{location_name}** created successfully!"
+                'message': f"✅ Site **{location_name}** created successfully! \n Would you like to create site again or try other new operations"
             }
             
         except requests.exceptions.RequestException as e:

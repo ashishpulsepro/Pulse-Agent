@@ -62,7 +62,7 @@ class UserManager:
             for user in existing_users:
                 if user["email"] == email:
                     return {
-                        'message':f"User **{first_name}** with email **{email}** already exist"
+                        'message':f"User **{first_name}** with email **{email}** already exist \n Would you like to create user again or try other new operation"
                     }
                 
             response = requests.post(url, headers=headers, json=payload)
@@ -71,7 +71,7 @@ class UserManager:
             logger.info(f"User '{first_name}' created successfully")
             response.json()
             return {
-                'message': f"✅ User **{first_name} {last_name}** created successfully!"
+                'message': f"✅ User **{first_name} {last_name}** created successfully!\n Would you like to create user again or try other new operation"
             }
             
         except requests.exceptions.RequestException as e:
