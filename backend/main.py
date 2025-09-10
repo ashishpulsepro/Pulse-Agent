@@ -399,10 +399,21 @@ async def upload_form_endpoint(
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
-    return {"error": "Endpoint not found", "available_endpoints": "/docs"}
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=404, content={
+        "error": "Endpoint not found",
+        "available_endpoints": "/docs"
+    })
 
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
-    return {"error": "Internal server error", "message": "Please check logs for details"}
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=500, content={
+        "error": "Internal server error",
+        "message": "Please check logs for details"
+    })
 
-
+# Root endpoint to avoid 404 on '/'
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "PulsePro Site Management API", "docs": "/docs"}
