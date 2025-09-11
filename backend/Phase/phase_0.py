@@ -15,14 +15,15 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
     # Get conversation history from MongoDB (optimized - only recent messages)
     db_messages = get_conversation_from_db(session_id)
     conversation_history=""
-    msg = db_messages[0]
-    role = "User" if msg["role"].lower() == "user" else "Assistant"
-    conversation_history = f"{role}: {msg['message']}\n{conversation_history}"
+    if len(db_messages) > 0:
+        msg = db_messages[0]
+        role = "User" if msg["role"].lower() == "user" else "Assistant"
+        conversation_history = f"{role}: {msg['message']}\n{conversation_history}"
 
-    msg1 = db_messages[1]
-    role = "User" if msg1["role"].lower() == "user" else "Assistant"
-    conversation_history = f"{role}: {msg1['message']}\n{conversation_history}"
-
+    if len(db_messages) > 1:
+        msg1 = db_messages[1]
+        role = "User" if msg1["role"].lower() == "user" else "Assistant"
+        conversation_history = f"{role}: {msg1['message']}\n{conversation_history}"
 
     print("conversation_inside_phase_0: ",conversation_history)   
 
