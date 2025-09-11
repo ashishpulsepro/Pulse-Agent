@@ -34,7 +34,7 @@ async def execute_phase_2(session_id: str,intent:str,email:str,auth_manager:Auth
         conversation_history = ""
         for msg in db_messages:
             role = "User" if msg["role"] == "user" else "Assistant"
-            conversation_history += f"{role}: {msg['message']}\n"
+            conversation_history = f"{role}: {msg['message']}\n {conversation_history}"
         
         new_prompt=get_json_response_prompt(intent)
         # Create Phase 2 prompt

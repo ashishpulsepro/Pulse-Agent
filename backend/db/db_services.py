@@ -50,14 +50,24 @@ def save_conversation_to_db(session_id: str, role: str, message: str,email:str=N
 def get_conversation_from_db(session_id: str) -> list:
     """Get conversation history from MongoDB"""
     try:
-        messages = conversations_collection.find(
-            {"session_id": session_id,"active":True}
-        ).sort([("timestamp", 1), ("_id", 1)])
-        return list(messages)
+        print("get_conversation_from_db")
+        
+        current_messages = list(conversations_collection.find(
+            {"session_id": session_id, "active": True}
+        ).sort([("timestamp", -1), ("_id", -1)]))
+
+        previous_messages = list(conversations_collection.find(
+            {"session_id": session_id, "active": False}
+        ).sort([("timestamp", -1), ("_id", -1)]).limit(5))
+
+        messages = current_messages + previous_messages
+        print(messages)
+        return messages
+        
     except Exception as e:
         logger.error(f"Failed to get from MongoDB: {e}")
         return []
-
+    
 
 def can_proceed(session_id: str) -> bool:
     """Get the status from the last message of Assistant"""

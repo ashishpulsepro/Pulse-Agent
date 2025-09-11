@@ -14,12 +14,19 @@ async def execute_phase_0(session_id: str, user_message: str, client=get_gemini_
 
     # Get conversation history from MongoDB (optimized - only recent messages)
     db_messages = get_conversation_from_db(session_id)
-    conversation_history = "\n".join([
-    f"User: {msg['message']}"
-    for msg in db_messages[-5:]  # Last 5 messages
-    if msg['role'] == 'user'  # Only user messages
-    ])
-    
+    conversation_history=""
+    msg = db_messages[0]
+    role = "User" if msg["role"].lower() == "user" else "Assistant"
+    conversation_history = f"{role}: {msg['message']}\n{conversation_history}"
+
+    msg1 = db_messages[1]
+    role = "User" if msg1["role"].lower() == "user" else "Assistant"
+    conversation_history = f"{role}: {msg1['message']}\n{conversation_history}"
+
+
+    print("conversation_inside_phase_0: ",conversation_history)   
+
+
     # Valid intents list
     valid_intents = [
         "CREATE_SITE", "DELETE_SITE", "VIEW_SITES", 
@@ -52,11 +59,13 @@ Operation cancelled. No action taken. Now you can start with new operation.
 1 • Site Creation - Set up and configure your PulsePro site
 2 • User Account Setup - Create profiles and manage permissions
 3 • Checklist Creation - Build industry standard checklists
-User: 3 → CREATE_TEMPLATE
+if User types : 3 → CREATE_TEMPLATE 
+if User types : 2-> CREATE_USER 
+if User types : 1-> CREATE_SITE
 
 Assistant:
 Would you like to create site/user/template again or start new operation
-User: new op/operation ->UNKNOWN
+User: start/try  new/other/another  op/operation ->UNKNOWN
 
 ====================USER MESSAGE ANALYSIS====================
 USER MESSAGE: "{user_message}"

@@ -26,7 +26,7 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str,
     print("db messages: ",db_messages)
     for msg in db_messages:
         role = "User" if msg["role"] == "user" else "Assistant"
-        conversation_history += f"{role}: {msg['message']}\n"
+        conversation_history = f"{role}: {msg['message']}\n {conversation_history}"
 
     # Get current sites list
     # sites_list = get_sites_list_formatted()
@@ -72,6 +72,11 @@ async def execute_phase_1(session_id: str, user_message: str, client,intent:str,
     BASE_PROMPT_FOR_ONBOARDING=f"""====================PULSEPRO ONBOARDING ASSISTANT====================
 Goal: Guide users through PulsePro's onboarding process by helping them choose and complete essential setup steps.
 
+
+=========================INTENT=========================
+{intent}
+Greatest Priority : when intent is 'UNKNOWN_1',strictly just show all the operations that can be performed and nothing else
+
 ====================AVAILABLE OPERATIONS====================
 site_creation
 new_user_setup
@@ -98,7 +103,7 @@ If user request is related but outside scope → Acknowledge helpfully, then red
 If user request is unrelated → Politely redirect to available onboarding operations.
 If user selects an operation → Begin that operation's specific flow.
 If conversation History shows that user has already performed some operation then ask if user wants to do that operation again or continue with other 2 operations
-If conversation History shows that the user switches from one operation to another , ask him to strictly type 'cancel' and then start with another operation
+If conversation History shows that the user switches from one operation to another without completion,then only ask him to strictly type 'cancel' and then start with another operation,BUT this logic must be avoided when the intent is "UNKNOWN_1" , instead show all the operations that can be performed
 
 ====================RULES====================
 Be conversational, helpful, and adapt to user's tone.
@@ -107,7 +112,7 @@ Provide context about why each step matters.
 Use **bold** for key concepts and bullet points for clarity.
 Ask clarifying questions when needs aren't clear.
 Never abruptly shut down conversations - redirect helpfully.
-If conversation History shows that the user switches from one operation to another , ask him to strictly type 'cancel' and then start with another operation
+If conversation History shows that the user switches from one operation to another without completion ,then only ask him to strictly type 'cancel' and then start with another operation, BUT this rule must be avoided when intent is 'UNKNOWN_1', instead show all the operations that can be performed
 
 ====================RESPONSE PATTERNS====================
 
