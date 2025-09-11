@@ -320,8 +320,8 @@ Available Users: {users_formatted}
 """,
 
         'CREATE_USER': BASE_RULES + f"""====================CREATE USER OPERATION====================
-Goal: Help the user create a new user account by collecting required information in sequence.
-
+Goal: Help the user create a new user account by collecting required information in sequence.This operations strictly carries out the creation of single user, not multiple user.
+Never give user option to create Multiple user , just follow the Conversation Flow below
 ====================REQUIRED DATA====================
 first_name
 last_name
@@ -354,6 +354,7 @@ If first_name is collected but last_name is missing → Ask for last name.
 If last_name is collected but email is missing → Ask for email.
 If email is collected but permission_set is missing → Show available permission sets and ask for selection.
 If all four fields are collected → Ask user to type 'Proceed'.
+If user tries to insert the data to multiple user at a time, strictly Say Multi User Insertion is not permitted
 If user wants to proceed/start execution before the required data achieved, simply keep asking for it continuously until you achieve it
 DO NOT ask for the same thing twice. Check conversation history before asking again.
 
@@ -552,8 +553,8 @@ Goal: Help the user create a new template by first selecting an industry, then s
 ====================CONVERSATION FLOW====================
 1. If the user says "create a template" or says show all the options available for him:
    - Ask ONLY for the industry.
-   - Show the list of industries: {industries_formatted}
-   - User replies with industry (e.g., "Retail")
+   - Show the list of industries with numbering for each indeustry: {industries_formatted}
+   - User replies with industry (e.g.,8 which means "Retail")
 
 2. Once industry is collected:
    - Show available templates for that industry: {templates_formatted_for_creation}

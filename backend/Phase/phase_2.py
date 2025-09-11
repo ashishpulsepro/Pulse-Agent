@@ -1,7 +1,7 @@
 
 import logging
 import json
-from db.db_services import get_conversation_from_db,clear_conversation_from_db,save_conversation_to_db
+from db.db_services import get_conversation_from_db,clear_conversation_from_db,save_conversation_to_db,store_session_intent
 from LLM.initialize_llm import get_gemini_client
 from Phase.execute_operation import execute_site_operation
 
@@ -72,6 +72,8 @@ async def execute_phase_2(session_id: str,intent:str,email:str,auth_manager:Auth
         
         # Clear conversation after execution
         clear_conversation_from_db(session_id)
+        print("store_session_intent UNKNOWN")
+        store_session_intent(session_id=session_id,session_intent='UNKNOWN')
         save_conversation_to_db(email=email,message=execution_result["message"],session_id=session_id,role="Assistant",intent='UNKNOWN')
         
         return ChatResponse(

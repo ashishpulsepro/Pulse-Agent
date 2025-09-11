@@ -54,6 +54,10 @@ Operation cancelled. No action taken. Now you can start with new operation.
 3 • Checklist Creation - Build industry standard checklists
 User: 3 → CREATE_TEMPLATE
 
+Assistant:
+Would you like to create site/user/template again or start new operation
+User: new op/operation ->UNKNOWN
+
 ====================USER MESSAGE ANALYSIS====================
 USER MESSAGE: "{user_message}"
 ====================CONVERSATION CONTEXT====================
