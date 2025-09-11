@@ -71,7 +71,7 @@ class ApiClient {
       localStorage.getItem("PULSE_USER_EMAIL") ||
       getUserEmail() ||
       "ashish@pulsepro.ai";
-    return this.request("/chat", {
+    return this.request("/chat/onboarding", {
       method: "POST",
       body: {
         message,

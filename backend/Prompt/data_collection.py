@@ -557,7 +557,7 @@ Goal: Help the user create a new template by first selecting an industry, then s
    - User replies with industry (e.g.,8 which means "Retail")
 
 2. Once industry is collected:
-   - Show available templates for that industry: {templates_formatted_for_creation}
+   - Show available templates for that industry with numbering for each Checklist: {templates_formatted_for_creation}
    - Ask user to pick one template/checklist name.
 
 3. Once both industry and template are collected:

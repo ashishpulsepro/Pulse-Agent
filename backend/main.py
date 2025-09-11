@@ -140,9 +140,9 @@ async def chat_with_agent_onboarding(chat_request: ChatRequest,current_user: dic
         cancel_triggers = ["cancel", "stop", "exit", "abort", "halt", "quit", "terminate", "end","cancle","cancl"]
         if user_message.lower().strip()  in cancel_triggers:
             msg=f"""Operation cancelled. No action taken. Now you can start with new operation.\n 
-               1 • **Site Creation** - Set up and configure your PulsePro site
-               2 • **User Account Setup** - Create profiles and manage permissions  
-               3 • **Checklist Creation** - Build industry standard checklists
+               1. **Site Creation** - Set up and configure your PulsePro site
+               2. **User Account Setup** - Create profiles and manage permissions  
+               3. **Checklist Creation** - Build industry standard checklists
                  """
             
             clear_conversation_from_db(session_id)
