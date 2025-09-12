@@ -1,34 +1,16 @@
 from pymongo import MongoClient
 from datetime import datetime
-import uuid
-import urllib.parse
-
-
-
 import logging
-import json
-
-
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+from db.db_config import get_db
 
 
-# MongoDB connection setup----------------------------------------------------------------------------------------
-username = "ashish"
-password = urllib.parse.quote_plus("Radhey@123")  # URL encode the password
-MONGO_URI = f"mongodb+srv://{username}:{password}@cluster0.3uxl669.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-client_mongo = MongoClient(MONGO_URI)
-db = client_mongo.Conversations
-conversations_collection = db.conversations
-
-
-
-
-
+conversations_collection=get_db()
 
 #services------------------------------------------------------------------------------------------------------------------
 
