@@ -214,7 +214,6 @@ async def chat_with_agent(chat_request: ChatRequest,current_user: dict = Depends
         #     token = auth_header.split(" ", 1)[1].strip()
         #     os.environ["refresh"] = token  # Used by AuthenticationManager
 
-        # client = get_ollama_client()
 
         client = get_gemini_client()
         # model = client.GenerativeModel("gemini-2.5-pro")

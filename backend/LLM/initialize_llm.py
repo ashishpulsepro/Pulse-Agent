@@ -1,24 +1,9 @@
-
-import ollama
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
 # Global storage for chat sessions (in production, use Redis or database)
 chat_sessions: Dict[str, List[Dict]] = {}
-
-def get_ollama_client():
-    """Get Ollama client - simple dependency"""
-    try:
-        client = ollama.Client(host='http://localhost:11434')
-        # Quick test to ensure connection
-        client.list()
-        return client
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Ollama service unavailable: {str(e)}"
-        )
     
 
     
